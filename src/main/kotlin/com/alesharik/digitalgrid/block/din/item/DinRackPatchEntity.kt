@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.block.din.item.patch
+package com.alesharik.digitalgrid.block.din.item
 
 import com.alesharik.digitalgrid.block.din.DinRackEntity
 import com.alesharik.digitalgrid.client.PartialModels
@@ -16,7 +16,6 @@ import org.patryk3211.powergrid.electricity.base.IDecoratedTerminal
 import org.patryk3211.powergrid.electricity.base.IElectricEntity
 import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
 import java.util.stream.Stream
-
 
 class DinRackPatchEntity: DinRackEntity {
     override val shape: VoxelShape = SHAPE
