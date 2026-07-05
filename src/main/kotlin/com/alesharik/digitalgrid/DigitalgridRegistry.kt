@@ -1,5 +1,8 @@
 package com.alesharik.digitalgrid
 
+import com.alesharik.digitalgrid.block.din.DinRackEntity
+import com.alesharik.digitalgrid.block.din.DinRackRegistry
+import com.alesharik.digitalgrid.block.din.item.contactor.DinRackPatchEntity
 import com.alesharik.digitalgrid.block.din.item.contactor.DinRackPatchItem
 import com.alesharik.digitalgrid.block.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.block.din.rack.DinRackBlockEntity
@@ -15,6 +18,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers
 import net.neoforged.neoforge.registries.DeferredRegister
+import net.neoforged.neoforge.registries.NewRegistryEvent
 import thedarkcolour.kotlinforforge.neoforge.forge.getValue
 
 object DigitalgridRegistry {
@@ -54,11 +58,19 @@ object DigitalgridRegistry {
         val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { -> DinRackPatchItem(Item.Properties()) })
     }
 
+    object DinRackEntities {
+        internal val DIN_RACK_ENTITIES: DeferredRegister<DinRackEntity> = DeferredRegister.create(DinRackRegistry.KEY, Digitalgrid.ID)
+
+        val DIN_RACK_PATCH by DIN_RACK_ENTITIES.register("din_rack_patch", { -> DinRackPatchEntity() })
+    }
+
     internal object Registries {
         fun register(bus: IEventBus) {
+            bus.addListener { event: NewRegistryEvent -> event.register(DinRackRegistry.REGISTRY) }
             Blocks.BLOCKS.register(bus)
             Items.ITEMS.register(bus)
             BlockEntities.BLOCK_ENTITIES.register(bus)
+            DinRackEntities.DIN_RACK_ENTITIES.register(bus)
             CREATIVE_MODE_TABS.register(bus)
         }
     }
