@@ -202,7 +202,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
             if (idx !in 0..<terminalCount) {
                 throw IllegalArgumentException("Could not select terminal node $idx, max nodes are $terminalCount")
             }
-            return builder.terminalNode(off)
+            return builder.terminalNode(off + idx)
         }
     }
 
