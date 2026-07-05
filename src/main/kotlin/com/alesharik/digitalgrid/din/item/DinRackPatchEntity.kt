@@ -1,7 +1,8 @@
-package com.alesharik.digitalgrid.block.din.item
+package com.alesharik.digitalgrid.din.item
 
-import com.alesharik.digitalgrid.block.din.DinRackEntity
 import com.alesharik.digitalgrid.client.PartialModels
+import com.alesharik.digitalgrid.din.DINUnit
+import com.alesharik.digitalgrid.din.DinRackEntity
 import com.mojang.blaze3d.vertex.PoseStack
 import com.simibubi.create.foundation.render.RenderTypes
 import net.createmod.catnip.render.CachedBuffers
@@ -20,6 +21,7 @@ import java.util.stream.Stream
 class DinRackPatchEntity: DinRackEntity {
     override val shape: VoxelShape = SHAPE
     override val terminalBoundingBox: Array<TerminalBoundingBox> = TERMINALS
+    override val width: DINUnit = DINUnit(1)
 
     override fun render(
         be: BlockState,

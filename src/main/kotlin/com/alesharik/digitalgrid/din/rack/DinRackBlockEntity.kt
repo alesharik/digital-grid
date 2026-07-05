@@ -1,8 +1,9 @@
-package com.alesharik.digitalgrid.block.din.rack
+package com.alesharik.digitalgrid.din.rack
 
 import com.alesharik.digitalgrid.DigitalgridRegistry.BlockEntities
-import com.alesharik.digitalgrid.block.din.DinRackEntity
-import com.alesharik.digitalgrid.block.din.item.DinRackPatchEntity
+import com.alesharik.digitalgrid.din.DINUnit
+import com.alesharik.digitalgrid.din.DinRackEntity
+import com.alesharik.digitalgrid.din.item.DinRackPatchEntity
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
@@ -33,11 +34,11 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     init {
         mEntities = buildList {
             add(DinRackEntityPlacement(
-                u = 0,
+                u = DINUnit(0),
                 entity = DinRackPatchEntity()
             ))
             add(DinRackEntityPlacement(
-                u = 5,
+                u = DINUnit(5),
                 entity = DinRackPatchEntity()
             ))
         }.toMutableList()
@@ -52,7 +53,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
 
     private fun buildShape(): DirectionalVoxelShape {
         val combined = entities.fold(BASE_SHAPE) { acc, placed ->
-            Shapes.join(acc, placed.entity.shape.move(placed.u / 16.0, 0.0, 0.0), BooleanOp.OR)
+            Shapes.join(acc, placed.entity.shape.move(placed.u.toDouble() / 16.0, 0.0, 0.0), BooleanOp.OR)
         }
         return DirectionalVoxelShape(combined.optimize())
     }
@@ -73,11 +74,13 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
 
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
         super.read(tag, registries, clientPacket)
+        entities.forEach { it.entity.read(tag, registries, clientPacket) }
         invalidateInternal()
     }
 
     override fun write(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
         super.write(tag, registries, clientPacket)
+        entities.forEach { it.entity.write(tag, registries, clientPacket) }
     }
 
     override fun terminalCount(): Int = terminals.size
@@ -94,7 +97,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     }
 
     data class DinRackEntityPlacement(
-        val u: Int,
+        val u: DINUnit,
         val entity: DinRackEntity,
     )
 

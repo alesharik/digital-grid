@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.block.din.rack
+package com.alesharik.digitalgrid.din.rack
 
 import com.alesharik.digitalgrid.DigitalgridRegistry
 import com.simibubi.create.foundation.block.IBE

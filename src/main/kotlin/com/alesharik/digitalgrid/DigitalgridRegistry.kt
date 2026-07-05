@@ -1,12 +1,12 @@
 package com.alesharik.digitalgrid
 
-import com.alesharik.digitalgrid.block.din.DinRackEntity
-import com.alesharik.digitalgrid.block.din.DinRackRegistry
-import com.alesharik.digitalgrid.block.din.item.DinRackItem
-import com.alesharik.digitalgrid.block.din.item.DinRackPatchEntity
-import com.alesharik.digitalgrid.block.din.rack.DinRackBlock
-import com.alesharik.digitalgrid.block.din.rack.DinRackBlockEntity
-import com.alesharik.digitalgrid.block.din.rack.DinRackBlockEntityRenderer
+import com.alesharik.digitalgrid.din.DinRackEntity
+import com.alesharik.digitalgrid.din.DinRackRegistry
+import com.alesharik.digitalgrid.din.item.DinRackItem
+import com.alesharik.digitalgrid.din.item.DinRackPatchEntity
+import com.alesharik.digitalgrid.din.rack.DinRackBlock
+import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
+import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.BlockItem

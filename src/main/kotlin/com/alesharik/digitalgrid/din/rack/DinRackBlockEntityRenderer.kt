@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.block.din.rack
+package com.alesharik.digitalgrid.din.rack
 
 import com.alesharik.digitalgrid.utils.voxel.rotationYDegrees
 import com.mojang.blaze3d.vertex.PoseStack
@@ -23,7 +23,7 @@ class DinRackBlockEntityRenderer: SafeBlockEntityRenderer<DinRackBlockEntity>() 
                 .center()
                 .rotateYDegrees(facing.rotationYDegrees())
                 .uncenter()
-                .translate(placed.u / 16f, 0 / 16f, 0f)
+                .translate(placed.u.value / 16f, 0 / 16f, 0f)
             placed.entity.render(be.blockState, placed.entity, partialTicks, ms, bufferSource, light, overlay)
             stack.popPose()
         }

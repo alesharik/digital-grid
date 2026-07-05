@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.block.din
+package com.alesharik.digitalgrid.din
 
 import com.alesharik.digitalgrid.Digitalgrid
 import net.minecraft.core.Registry

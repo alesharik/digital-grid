@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.block.din.item
+package com.alesharik.digitalgrid.din.item
 
 import net.minecraft.world.item.Item
 
