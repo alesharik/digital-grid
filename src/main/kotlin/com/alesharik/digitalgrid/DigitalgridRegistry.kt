@@ -1,0 +1,65 @@
+package com.alesharik.digitalgrid
+
+import com.alesharik.digitalgrid.block.din.item.contactor.DinRackPatchItem
+import com.alesharik.digitalgrid.block.din.rack.DinRackBlock
+import com.alesharik.digitalgrid.block.din.rack.DinRackBlockEntity
+import com.alesharik.digitalgrid.block.din.rack.DinRackBlockEntityRenderer
+import net.minecraft.core.registries.BuiltInRegistries
+import net.minecraft.network.chat.Component
+import net.minecraft.world.item.BlockItem
+import net.minecraft.world.item.CreativeModeTab
+import net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters
+import net.minecraft.world.item.Item
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.block.entity.BlockEntityType
+import net.neoforged.bus.api.IEventBus
+import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers
+import net.neoforged.neoforge.registries.DeferredRegister
+import thedarkcolour.kotlinforforge.neoforge.forge.getValue
+
+object DigitalgridRegistry {
+    internal val CREATIVE_MODE_TABS: DeferredRegister<CreativeModeTab> = DeferredRegister.create(BuiltInRegistries.CREATIVE_MODE_TAB, Digitalgrid.ID)
+
+    val TAB by CREATIVE_MODE_TABS.register("digitalgrid", { ->
+        CreativeModeTab.builder()
+            .title(Component.translatable("itemGroup." + Digitalgrid.ID))
+            .icon { ItemStack(Items.DIN_RACK) }
+            .displayItems { _: ItemDisplayParameters?, output: CreativeModeTab.Output ->
+                output.accept(Items.DIN_RACK)
+                output.accept(Items.DIN_RACK_PATCH)
+            }
+            .build()
+    })
+
+    fun registerRenderers(event: RegisterRenderers) {
+        event.registerBlockEntityRenderer(BlockEntities.DIN_RACK) { DinRackBlockEntityRenderer() }
+    }
+
+    object Blocks {
+        internal val BLOCKS: DeferredRegister.Blocks = DeferredRegister.createBlocks(Digitalgrid.ID)
+
+        val DIN_RACK by BLOCKS.register("din_rack") { -> DinRackBlock() }
+    }
+
+    object BlockEntities {
+        internal val BLOCK_ENTITIES = DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, Digitalgrid.ID)
+
+        val DIN_RACK by BLOCK_ENTITIES.register("din_rack", { -> BlockEntityType.Builder.of(::DinRackBlockEntity, Blocks.DIN_RACK).build(null) })
+    }
+
+    object Items {
+        internal val ITEMS: DeferredRegister.Items = DeferredRegister.createItems(Digitalgrid.ID)
+
+        val DIN_RACK by ITEMS.register("din_rack", { -> BlockItem(Blocks.DIN_RACK, Item.Properties()) })
+        val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { -> DinRackPatchItem(Item.Properties()) })
+    }
+
+    internal object Registries {
+        fun register(bus: IEventBus) {
+            Blocks.BLOCKS.register(bus)
+            Items.ITEMS.register(bus)
+            BlockEntities.BLOCK_ENTITIES.register(bus)
+            CREATIVE_MODE_TABS.register(bus)
+        }
+    }
+}
