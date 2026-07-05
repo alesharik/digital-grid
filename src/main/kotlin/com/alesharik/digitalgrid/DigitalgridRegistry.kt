@@ -5,6 +5,7 @@ import com.alesharik.digitalgrid.din.DinRackRegistry
 import com.alesharik.digitalgrid.din.item.DinRackBatteryEntity
 import com.alesharik.digitalgrid.din.item.DinRackItem
 import com.alesharik.digitalgrid.din.item.DinRackPatchEntity
+import com.alesharik.digitalgrid.din.item.DinRackPowerSupplyEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer
@@ -33,6 +34,7 @@ object DigitalgridRegistry {
                 output.accept(Items.DIN_RACK)
                 output.accept(Items.DIN_RACK_PATCH)
                 output.accept(Items.DIN_RACK_BATTERY)
+                output.accept(Items.DIN_RACK_POWER_SUPPLY)
             }
             .build()
     })
@@ -59,6 +61,8 @@ object DigitalgridRegistry {
         val DIN_RACK by ITEMS.register("din_rack", { -> BlockItem(Blocks.DIN_RACK, Item.Properties()) })
         val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { -> DinRackItem(Item.Properties(), DinRackPatchEntity::class.java) })
         val DIN_RACK_BATTERY by ITEMS.register("din_rack_battery", { -> DinRackItem(Item.Properties(), DinRackBatteryEntity::class.java) })
+        val DIN_RACK_POWER_SUPPLY by ITEMS.register("din_rack_power_supply", { -> DinRackItem(Item.Properties(),
+            DinRackPowerSupplyEntity::class.java) })
     }
 
     object DinRackEntities {
@@ -66,6 +70,7 @@ object DigitalgridRegistry {
 
         val DIN_RACK_PATCH by DIN_RACK_ENTITIES.register("din_rack_patch", { -> DinRackPatchEntity() })
         val DIN_RACK_BATTERY by DIN_RACK_ENTITIES.register("din_rack_battery", { -> DinRackBatteryEntity() })
+        val DIN_RACK_POWER_SUPPLY by DIN_RACK_ENTITIES.register("din_rack_power_supply", { -> DinRackPowerSupplyEntity() })
     }
 
     internal object Registries {
