@@ -38,8 +38,19 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     fun invalidateInternal() {
         shapeCache = null
         terminalCache = null
+        dropStaleClientConnections()
         level?.sendBlockUpdated(worldPosition, blockState, blockState, Block.UPDATE_ALL)
         electricBehaviour.rebuildCircuit(true)
+    }
+
+    /**
+     * A client-side circuit rebuild must never reach [ElectricBehaviour]'s removed-endpoint
+     * path — wire entities broadcast packets from it, which is server-only. The server has
+     * already broken these connections via its own rebuild; mirror that locally.
+     */
+    private fun dropStaleClientConnections() {
+        if (level?.isClientSide != true) return
+        electricBehaviour.connections.keys.removeIf { it.terminal >= terminals.size }
     }
 
     fun canPlace(u: DINUnit, width: DINUnit): Boolean = canPlace(entities, u, width)
@@ -98,7 +109,21 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     }
 
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
+        // Modules must be parsed before super.read: ElectricBehaviour.read rebuilds the
+        // circuit on the client (its "Rebuild" sync flag) and must see the new module list.
+        mEntities = readModules(tag, registries, clientPacket)
+        shapeCache = null
+        terminalCache = null
+        dropStaleClientConnections()
         super.read(tag, registries, clientPacket)
+        invalidateInternal()
+    }
+
+    private fun readModules(
+        tag: CompoundTag,
+        registries: HolderLookup.Provider,
+        clientPacket: Boolean
+    ): MutableList<DinRackEntityPlacement> {
         val rebuilt = ArrayList<DinRackEntityPlacement>()
         val list = tag.getList("Modules", Tag.TAG_COMPOUND.toInt())
         for (i in list.indices) {
@@ -125,8 +150,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
             }
             rebuilt.add(DinRackEntityPlacement(u, entity, stack))
         }
-        mEntities = rebuilt
-        invalidateInternal()
+        return rebuilt
     }
 
     override fun write(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
