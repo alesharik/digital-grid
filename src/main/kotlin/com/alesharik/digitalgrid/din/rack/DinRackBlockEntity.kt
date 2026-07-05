@@ -1,13 +1,17 @@
 package com.alesharik.digitalgrid.din.rack
 
+import com.alesharik.digitalgrid.Digitalgrid
 import com.alesharik.digitalgrid.DigitalgridRegistry.BlockEntities
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
-import com.alesharik.digitalgrid.din.item.DinRackPatchEntity
+import com.alesharik.digitalgrid.din.item.DinRackItem
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.nbt.ListTag
+import net.minecraft.nbt.Tag
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Block.box
 import net.minecraft.world.level.block.state.BlockState
@@ -31,24 +35,45 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     private val terminals: Array<TerminalBoundingBox>
         get() = terminalCache ?: buildTerminals().also { terminalCache = it }
 
-    init {
-        mEntities = buildList {
-            add(DinRackEntityPlacement(
-                u = DINUnit(0),
-                entity = DinRackPatchEntity()
-            ))
-            add(DinRackEntityPlacement(
-                u = DINUnit(5),
-                entity = DinRackPatchEntity()
-            ))
-        }.toMutableList()
-    }
-
     fun invalidateInternal() {
         shapeCache = null
         terminalCache = null
         level?.sendBlockUpdated(worldPosition, blockState, blockState, Block.UPDATE_ALL)
         electricBehaviour.rebuildCircuit(true)
+    }
+
+    fun canPlace(u: DINUnit, width: DINUnit): Boolean = canPlace(entities, u, width)
+
+    private fun canPlace(placements: List<DinRackEntityPlacement>, u: DINUnit, width: DINUnit): Boolean {
+        if (width.value <= 0) return false
+        if (u.value < 0 || u.value + width.value > RACK_WIDTH) return false
+        return placements.none { placed ->
+            val start = placed.u.value
+            val end = start + placed.entity.width.value
+            u.value < end && u.value + width.value > start
+        }
+    }
+
+    fun moduleAt(u: DINUnit): DinRackEntityPlacement? =
+        entities.firstOrNull { it.u.value <= u.value && u.value < it.u.value + it.entity.width.value }
+
+    /** Server-side only. Returns false if the interval is occupied or out of bounds. */
+    fun placeModule(u: DINUnit, entity: DinRackEntity, stack: ItemStack): Boolean {
+        if (stack.isEmpty) return false
+        if (!canPlace(u, entity.width)) return false
+        (mEntities ?: return false).add(DinRackEntityPlacement(u, entity, stack))
+        setChanged()
+        invalidateInternal()
+        return true
+    }
+
+    /** Server-side only. Removes the module covering [u]; returns its placement or null. */
+    fun removeModuleAt(u: DINUnit): DinRackEntityPlacement? {
+        val placement = moduleAt(u) ?: return null
+        if (mEntities?.remove(placement) != true) return null
+        setChanged()
+        invalidateInternal()
+        return placement
     }
 
     private fun buildShape(): DirectionalVoxelShape {
@@ -74,13 +99,50 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
 
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
         super.read(tag, registries, clientPacket)
-        entities.forEach { it.entity.read(tag, registries, clientPacket) }
+        val rebuilt = ArrayList<DinRackEntityPlacement>()
+        val list = tag.getList("Modules", Tag.TAG_COMPOUND.toInt())
+        for (i in list.indices) {
+            val entry = list.getCompound(i)
+            val itemTag = entry.get("Item") ?: continue
+            val stack = ItemStack.parse(registries, itemTag).orElse(ItemStack.EMPTY)
+            if (stack.isEmpty) {
+                Digitalgrid.LOGGER.warn("Skipping DIN module at {}: unparseable item", worldPosition)
+                continue
+            }
+            val item = stack.item as? DinRackItem
+            if (item == null) {
+                Digitalgrid.LOGGER.warn("Skipping DIN module at {}: {} is not a DinRackItem", worldPosition, stack.item)
+                continue
+            }
+            val entity = item.createEntity()
+            if (entry.contains("Data", Tag.TAG_COMPOUND.toInt())) {
+                entity.read(entry.getCompound("Data"), registries, clientPacket)
+            }
+            val u = DINUnit(entry.getInt("U"))
+            if (!canPlace(rebuilt, u, entity.width)) {
+                Digitalgrid.LOGGER.warn("Skipping DIN module at {}: invalid or overlapping position {}", worldPosition, u.value)
+                continue
+            }
+            rebuilt.add(DinRackEntityPlacement(u, entity, stack))
+        }
+        mEntities = rebuilt
         invalidateInternal()
     }
 
     override fun write(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
         super.write(tag, registries, clientPacket)
-        entities.forEach { it.entity.write(tag, registries, clientPacket) }
+        val list = ListTag()
+        for (placed in entities) {
+            if (placed.stack.isEmpty) continue
+            val entry = CompoundTag()
+            entry.putInt("U", placed.u.value)
+            entry.put("Item", placed.stack.save(registries))
+            val data = CompoundTag()
+            placed.entity.write(data, registries, clientPacket)
+            if (!data.isEmpty) entry.put("Data", data)
+            list.add(entry)
+        }
+        tag.put("Modules", list)
     }
 
     override fun terminalCount(): Int = terminals.size
@@ -99,9 +161,12 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     data class DinRackEntityPlacement(
         val u: DINUnit,
         val entity: DinRackEntity,
+        val stack: ItemStack,
     )
 
     companion object {
+        const val RACK_WIDTH = 16
+
         internal val BASE_SHAPE = Stream.of(
             box(0.0, 8.0, 13.0, 16.0, 10.0, 16.0),
             box(0.0, 10.0, 13.0, 16.0, 11.0, 14.0),
