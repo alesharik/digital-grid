@@ -1,9 +1,10 @@
 {
 	"format_version": "1.9.0",
 	"credit": "Made with Blockbench",
+	"parent": "pcl",
 	"textures": {
-		"0": "digitalgrid:block/din/patch",
-		"particle": "digitalgrid:block/din/patch"
+		"0": "digitalgrid:din/contactor",
+		"particle": "digitalgrid:din/contactor"
 	},
 	"elements": [
 		{
@@ -123,9 +124,8 @@
 			"scale": [0.61719, 0.51172, 0.69531]
 		},
 		"gui": {
-			"rotation": [-0.06, -49.74, -0.75],
-			"translation": [6.75, -1.25, 0],
-			"scale": [0.61719, 1, 1]
+			"rotation": [36.46, 24.53, -51.92],
+			"translation": [1, -0.75, 0]
 		},
 		"fixed": {
 			"rotation": [-180, -84, -180],
