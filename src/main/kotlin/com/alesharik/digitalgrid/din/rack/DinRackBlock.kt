@@ -1,10 +1,14 @@
 package com.alesharik.digitalgrid.din.rack
 
 import com.alesharik.digitalgrid.DigitalgridRegistry
+import com.alesharik.digitalgrid.din.DINUnit
+import com.alesharik.digitalgrid.din.item.DinRackItem
 import com.simibubi.create.foundation.block.IBE
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.util.Mth
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
@@ -53,7 +57,50 @@ class DinRackBlock: ElectricBlock(
         hand: InteractionHand,
         hit: BlockHitResult
     ): ItemInteractionResult {
-        return ItemInteractionResult.SKIP_DEFAULT_BLOCK_INTERACTION
+        val dinItem = item.item as? DinRackItem
+            ?: return super.useItemOn(item, st, lv, pos, player, hand, hit)
+        val be = getBlockEntityOptional(lv, pos).orElse(null)
+            ?: return ItemInteractionResult.FAIL
+        val u = hitToUnit(st, pos, hit)
+        val entity = dinItem.createEntity()
+        if (!be.canPlace(u, entity.width)) return ItemInteractionResult.FAIL
+        if (lv.isClientSide) return ItemInteractionResult.sidedSuccess(true)
+        val stored = item.copyWithCount(1)
+        if (!be.placeModule(u, entity, stored)) return ItemInteractionResult.FAIL
+        if (!player.hasInfiniteMaterials()) item.shrink(1)
+        return ItemInteractionResult.sidedSuccess(false)
+    }
+
+    override fun useWithoutItem(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hit: BlockHitResult
+    ): InteractionResult {
+        if (player.isSecondaryUseActive && player.mainHandItem.isEmpty) {
+            val be = getBlockEntityOptional(level, pos).orElse(null)
+                ?: return super.useWithoutItem(state, level, pos, player, hit)
+            val u = hitToUnit(state, pos, hit)
+            if (be.moduleAt(u) == null) return super.useWithoutItem(state, level, pos, player, hit)
+            if (level.isClientSide) return InteractionResult.sidedSuccess(true)
+            val removed = be.removeModuleAt(u) ?: return InteractionResult.FAIL
+            player.inventory.placeItemBackInInventory(removed.stack)
+            return InteractionResult.sidedSuccess(false)
+        }
+        return super.useWithoutItem(state, level, pos, player, hit)
+    }
+
+    private fun hitToUnit(state: BlockState, pos: BlockPos, hit: BlockHitResult): DINUnit {
+        val localX = hit.location.x - pos.x
+        val localZ = hit.location.z - pos.z
+        val northX = when (state.getValue(FACING)) {
+            Direction.EAST -> localZ
+            Direction.SOUTH -> 1.0 - localX
+            Direction.WEST -> 1.0 - localZ
+            else -> localX
+        }
+        return DINUnit(Mth.floor(northX * 16.0).coerceIn(0, 15))
     }
 
     override fun getBlockEntityClass(): Class<DinRackBlockEntity> = DinRackBlockEntity::class.java
