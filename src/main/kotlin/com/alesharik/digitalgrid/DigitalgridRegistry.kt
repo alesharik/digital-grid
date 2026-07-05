@@ -55,7 +55,7 @@ object DigitalgridRegistry {
         internal val ITEMS: DeferredRegister.Items = DeferredRegister.createItems(Digitalgrid.ID)
 
         val DIN_RACK by ITEMS.register("din_rack", { -> BlockItem(Blocks.DIN_RACK, Item.Properties()) })
-        val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { -> DinRackItem(Item.Properties()) })
+        val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { -> DinRackItem(Item.Properties(), DinRackPatchEntity::class.java) })
     }
 
     object DinRackEntities {
