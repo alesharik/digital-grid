@@ -3,8 +3,8 @@
 	"credit": "Made with Blockbench",
 	"parent": "pcl",
 	"textures": {
-		"0": "digitalgrid:din/contactor",
-		"particle": "digitalgrid:din/contactor"
+		"0": "digitalgrid:block/din/patch",
+		"particle": "digitalgrid:block/din/patch"
 	},
 	"elements": [
 		{

@@ -2,5 +2,6 @@
   "itemGroup.digitalgrid": "Digital Grid",
   "block.digitalgrid.din_rack": "DIN Rack",
   "item.digitalgrid.din_rack": "DIN Rack",
-  "item.digitalgrid.din_rack_patch": "Rack Patch"
+  "item.digitalgrid.din_rack_patch": "Rack Patch",
+  "item.digitalgrid.din_rackbattery": "Rack Battery"
 }
