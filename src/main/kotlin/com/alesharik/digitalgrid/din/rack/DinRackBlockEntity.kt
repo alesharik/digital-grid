@@ -19,6 +19,7 @@ import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.patryk3211.powergrid.electricity.base.*
+import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 import java.util.stream.Stream
 
 class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(BlockEntities.DIN_RACK, pos, state), IElectric {
@@ -103,7 +104,11 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
         cb.setTerminalCount(terminals.size)
         var off = 0
         for (en in entities) {
-            en.entity.buildCircuit(cb, off)
+            en.entity.buildCircuit(CircuitContextImpl(
+                off = off,
+                terminalCount = en.entity.terminalBoundingBox.size,
+                builder = cb,
+            ))
             off += en.entity.terminalBoundingBox.size
         }
     }
@@ -187,6 +192,19 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
         val entity: DinRackEntity,
         val stack: ItemStack,
     )
+
+    class CircuitContextImpl(
+        private val off: Int,
+        private val terminalCount: Int,
+        override val builder: IElectricEntity.CircuitBuilder
+    ): DinRackEntity.CircuitContext {
+        override fun terminalNode(idx: Int): FloatingNode {
+            if (idx !in 0..<terminalCount) {
+                throw IllegalArgumentException("Could not select terminal node $idx, max nodes are $terminalCount")
+            }
+            return builder.terminalNode(off)
+        }
+    }
 
     companion object {
         const val RACK_WIDTH = 16

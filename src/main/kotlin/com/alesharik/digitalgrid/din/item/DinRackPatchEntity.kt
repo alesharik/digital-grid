@@ -14,7 +14,6 @@ import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.patryk3211.powergrid.electricity.base.IDecoratedTerminal
-import org.patryk3211.powergrid.electricity.base.IElectricEntity
 import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
 import java.util.stream.Stream
 
@@ -37,10 +36,10 @@ class DinRackPatchEntity: DinRackEntity {
             .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
     }
 
-    override fun buildCircuit(cb: IElectricEntity.CircuitBuilder, off: Int) {
-        val a = cb.terminalNode(off)
-        val b = cb.terminalNode(off + 1)
-        cb.connect(0.1f, a, b)
+    override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
+        val a = ctx.terminalNode(0)
+        val b = ctx.terminalNode(1)
+        ctx.builder.connect(0.1f, a, b)
     }
 
     companion object {

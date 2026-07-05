@@ -13,7 +13,6 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
-import org.patryk3211.powergrid.electricity.base.IElectricEntity
 import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
 import java.util.stream.Stream
 
@@ -35,8 +34,6 @@ class DinRackBatteryEntity: DinRackEntity {
         buffer.light<SuperByteBuffer>(light)
             .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
     }
-
-    override fun buildCircuit(cb: IElectricEntity.CircuitBuilder, off: Int) {}
 
     companion object {
         private val SHAPE = Stream.of(

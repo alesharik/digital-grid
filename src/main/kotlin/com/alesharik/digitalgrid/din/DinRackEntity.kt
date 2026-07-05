@@ -8,6 +8,7 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.patryk3211.powergrid.electricity.base.IElectricEntity
 import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
+import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 
 interface DinRackEntity {
     val shape: VoxelShape
@@ -24,9 +25,15 @@ interface DinRackEntity {
         overlay: Int
     )
 
-    fun buildCircuit(cb: IElectricEntity.CircuitBuilder, off: Int)
+    fun buildCircuit(ctx: CircuitContext) {}
 
     fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {}
 
     fun write(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {}
+
+    interface CircuitContext {
+        val builder: IElectricEntity.CircuitBuilder
+
+        fun terminalNode(idx: Int): FloatingNode
+    }
 }
