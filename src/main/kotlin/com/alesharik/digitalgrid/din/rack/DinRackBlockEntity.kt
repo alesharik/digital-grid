@@ -20,6 +20,7 @@ import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.patryk3211.powergrid.electricity.base.*
 import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
+import org.patryk3211.powergrid.electricity.wire.BlockWireEndpoint
 import java.util.stream.Stream
 
 class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(BlockEntities.DIN_RACK, pos, state), IElectric {
@@ -73,7 +74,10 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     fun placeModule(u: DINUnit, entity: DinRackEntity, stack: ItemStack): Boolean {
         if (stack.isEmpty) return false
         if (!canPlace(u, entity.width)) return false
-        (mEntities ?: return false).add(DinRackEntityPlacement(u, entity, stack))
+        val list = mEntities ?: return false
+        val oldTerminals = globalTerminalMap(entities)
+        list.add(DinRackEntityPlacement(u, entity, stack))
+        remapConnections(oldTerminals)
         setChanged()
         invalidateInternal()
         return true
@@ -82,10 +86,57 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     /** Server-side only. Removes the module covering [u]; returns its placement or null. */
     fun removeModuleAt(u: DINUnit): DinRackEntityPlacement? {
         val placement = moduleAt(u) ?: return null
+        val oldTerminals = globalTerminalMap(entities)
         if (mEntities?.remove(placement) != true) return null
+        remapConnections(oldTerminals)
         setChanged()
         invalidateInternal()
         return placement
+    }
+
+    /**
+     * Wire endpoints are keyed by flat terminal index, so a module list change shifts every
+     * later module's indices. Re-key each wire to its module's new offset and break wires
+     * whose module is gone. Must run before [invalidateInternal]: ElectricBehaviour's rebuild
+     * breaks connections by index range alone, which would kill shifted wires that fell past
+     * the new terminal count and silently rewire a removed module's wires to other modules.
+     */
+    private fun remapConnections(oldTerminals: Map<Int, TerminalKey>) {
+        if (level?.isClientSide != false) return
+        val newTerminals = globalTerminalMap(entities).entries.associate { (idx, key) -> key to idx }
+        // Snapshot: endpointRemoved/setEndpointX mutate the live map reentrantly.
+        val snapshot = electricBehaviour.connections.entries.map { it.key to it.value.toList() }
+        for ((endpoint, wires) in snapshot) {
+            val newIdx = oldTerminals[endpoint.terminal]?.let { newTerminals[it] }
+            if (newIdx == endpoint.terminal) continue
+            if (newIdx == null) {
+                wires.forEach { it.endpointRemoved(endpoint) }
+                electricBehaviour.connections.remove(endpoint)
+            } else {
+                val newEndpoint = BlockWireEndpoint(worldPosition, newIdx)
+                for (wire in wires) {
+                    when (endpoint) {
+                        wire.endpoint1 -> wire.setEndpoint1(newEndpoint)
+                        wire.endpoint2 -> wire.setEndpoint2(newEndpoint)
+                    }
+                    // setEndpointX does not broadcast; sync the new endpoint to clients,
+                    // which also converges their connection maps.
+                    wire.sendExtraData()
+                }
+            }
+        }
+    }
+
+    private fun globalTerminalMap(placements: List<DinRackEntityPlacement>): Map<Int, TerminalKey> {
+        val map = HashMap<Int, TerminalKey>()
+        var off = 0
+        for (placed in placements) {
+            for (local in placed.entity.terminalBoundingBox.indices) {
+                map[off + local] = TerminalKey(placed.u.value, local)
+            }
+            off += placed.entity.terminalBoundingBox.size
+        }
+        return map
     }
 
     private fun buildShape(): DirectionalVoxelShape {
@@ -192,6 +243,9 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
         val entity: DinRackEntity,
         val stack: ItemStack,
     )
+
+    /** Module-space terminal id, stable while the module stays installed. */
+    private data class TerminalKey(val u: Int, val local: Int)
 
     class CircuitContextImpl(
         private val off: Int,
