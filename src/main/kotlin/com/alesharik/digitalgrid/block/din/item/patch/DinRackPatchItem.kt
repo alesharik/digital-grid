@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.block.din.item.contactor
+package com.alesharik.digitalgrid.block.din.item.patch
 
 import net.minecraft.world.item.Item
 

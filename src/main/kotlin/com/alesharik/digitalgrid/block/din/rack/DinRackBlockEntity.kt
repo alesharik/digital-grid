@@ -2,7 +2,7 @@ package com.alesharik.digitalgrid.block.din.rack
 
 import com.alesharik.digitalgrid.DigitalgridRegistry.BlockEntities
 import com.alesharik.digitalgrid.block.din.DinRackEntity
-import com.alesharik.digitalgrid.block.din.item.contactor.DinRackPatchEntity
+import com.alesharik.digitalgrid.block.din.item.patch.DinRackPatchEntity
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup

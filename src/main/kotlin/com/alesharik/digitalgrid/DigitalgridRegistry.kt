@@ -2,8 +2,8 @@ package com.alesharik.digitalgrid
 
 import com.alesharik.digitalgrid.block.din.DinRackEntity
 import com.alesharik.digitalgrid.block.din.DinRackRegistry
-import com.alesharik.digitalgrid.block.din.item.contactor.DinRackPatchEntity
-import com.alesharik.digitalgrid.block.din.item.contactor.DinRackPatchItem
+import com.alesharik.digitalgrid.block.din.item.patch.DinRackPatchEntity
+import com.alesharik.digitalgrid.block.din.item.patch.DinRackPatchItem
 import com.alesharik.digitalgrid.block.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.block.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.block.din.rack.DinRackBlockEntityRenderer

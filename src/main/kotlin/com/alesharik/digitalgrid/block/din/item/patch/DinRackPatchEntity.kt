@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.block.din.item.contactor
+package com.alesharik.digitalgrid.block.din.item.patch
 
 import com.alesharik.digitalgrid.block.din.DinRackEntity
 import com.alesharik.digitalgrid.client.PartialModels
