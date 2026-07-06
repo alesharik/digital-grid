@@ -7,6 +7,7 @@
   "item.digitalgrid.din_rack_power_supply": "Rack Power Supply",
   "digitalgrid.goggles.state": "State:",
   "digitalgrid.goggles.voltage": "Voltage:",
+  "digitalgrid.goggles.current": "Current:",
   "digitalgrid.goggles.charge": "Charge:",
   "digitalgrid.goggles.battery": "Battery",
   "digitalgrid.goggles.battery.state.empty": "Empty",
