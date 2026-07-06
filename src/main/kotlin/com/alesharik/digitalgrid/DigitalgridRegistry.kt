@@ -35,6 +35,7 @@ object DigitalgridRegistry {
                 output.accept(Items.DIN_RACK_POWER_SUPPLY)
                 output.accept(Items.DIN_RACK_PLC)
                 output.accept(Items.DIN_RACK_PLC_IO)
+                output.accept(Items.DIN_RACK_PLC_RELAY)
             }
             .build()
     })
@@ -67,6 +68,8 @@ object DigitalgridRegistry {
             DinRackPlcEntity::class.java) })
         val DIN_RACK_PLC_IO by ITEMS.register("din_rack_plc_io", { -> DinRackItem(Item.Properties(),
             DinRackPlcIOEntity::class.java) })
+        val DIN_RACK_PLC_RELAY by ITEMS.register("din_rack_plc_relay", { -> DinRackItem(Item.Properties(),
+            DinRackPlcRelayEntity::class.java) })
     }
 
     object DinRackEntities {
@@ -77,6 +80,7 @@ object DigitalgridRegistry {
         val DIN_RACK_POWER_SUPPLY by DIN_RACK_ENTITIES.register("din_rack_power_supply", { -> DinRackPowerSupplyEntity() })
         val DIN_RACK_PLC by DIN_RACK_ENTITIES.register("din_rack_plc", { -> DinRackPlcEntity() })
         val DIN_RACK_PLC_IO by DIN_RACK_ENTITIES.register("din_rack_plc_io", { -> DinRackPlcIOEntity() })
+        val DIN_RACK_PLC_RELAY by DIN_RACK_ENTITIES.register("din_rack_plc_relay", { -> DinRackPlcRelayEntity() })
     }
 
     internal object Registries {
