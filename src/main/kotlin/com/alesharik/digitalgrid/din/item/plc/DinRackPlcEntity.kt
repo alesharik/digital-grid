@@ -41,7 +41,10 @@ class DinRackPlcEntity: DinRackEntity {
             Block.box(0.0, 10.0, 14.0, 3.0, 15.0, 15.0),
             Block.box(0.0, 4.0, 13.0, 3.0, 7.0, 14.0),
             Block.box(0.0, 11.0, 13.0, 3.0, 14.0, 14.0),
-            Block.box(0.0, 4.0, 11.0, 3.0, 14.0, 13.0)
+            Block.box(0.0, 5.0, 11.0, 3.0, 14.0, 13.0),
+            Block.box(0.0, 4.0, 11.0, 1.0, 5.0, 13.0),
+            Block.box(1.0, 4.0, 12.0, 2.0, 5.0, 13.0),
+            Block.box(2.0, 4.0, 11.0, 3.0, 5.0, 13.0)
         ).reduce({ v1, v2 -> Shapes.join(v1, v2, BooleanOp.OR) }).get().optimize()
     }
 }
