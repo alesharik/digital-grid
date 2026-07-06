@@ -3,5 +3,18 @@
   "block.digitalgrid.din_rack": "DIN Rack",
   "item.digitalgrid.din_rack": "DIN Rack",
   "item.digitalgrid.din_rack_patch": "Rack Patch",
-  "item.digitalgrid.din_rackbattery": "Rack Battery"
+  "item.digitalgrid.din_rack_battery": "Rack Battery",
+  "item.digitalgrid.din_rack_power_supply": "Rack Power Supply",
+  "digitalgrid.goggles.state": "State:",
+  "digitalgrid.goggles.voltage": "Voltage:",
+  "digitalgrid.goggles.charge": "Charge:",
+  "digitalgrid.goggles.battery": "Battery",
+  "digitalgrid.goggles.battery.state.empty": "Empty",
+  "digitalgrid.goggles.battery.state.charging": "Charging",
+  "digitalgrid.goggles.battery.state.low": "Low charge",
+  "digitalgrid.goggles.battery.state.discharging": "Discharging",
+  "digitalgrid.goggles.battery.state.charged": "Charged",
+  "digitalgrid.goggles.power_supply": "Power Supply",
+  "digitalgrid.goggles.power_supply.state.working": "Working",
+  "digitalgrid.goggles.power_supply.state.off": "No power"
 }
