@@ -8,6 +8,8 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.chat.Component
 import net.minecraft.world.level.block.state.BlockState
 
+// todo wireless component
+// todo watchdog
 interface DinRackPlcComponent {
     fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {}
 
