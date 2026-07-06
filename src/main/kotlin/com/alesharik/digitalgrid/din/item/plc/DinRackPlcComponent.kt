@@ -2,6 +2,7 @@ package com.alesharik.digitalgrid.din.item.plc
 
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.mojang.blaze3d.vertex.PoseStack
+import dan200.computercraft.api.peripheral.IPeripheral
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
@@ -13,8 +14,11 @@ interface DinRackPlcComponent {
 
     fun write(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {}
 
+    /** Peripherals this component contributes to the PLC's internal modem bus, keyed by network name. */
+    fun collectPeripherals(): Map<String, IPeripheral> = emptyMap()
+
     /** Client-side: goggle tooltip lines for this module. Return true if any were added. */
-    fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean = false
+    fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean) {}
 
     fun render(
         be: BlockState,

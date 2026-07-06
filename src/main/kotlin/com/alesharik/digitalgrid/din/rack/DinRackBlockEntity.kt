@@ -17,8 +17,10 @@ import net.minecraft.nbt.Tag
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Block.box
+import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.BooleanOp
@@ -77,13 +79,20 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     fun moduleAt(u: DINUnit): DinRackEntityPlacement? =
         entities.firstOrNull { it.u.value <= u.value && u.value < it.u.value + it.entity.width.value }
 
+    /** Hands a module its [DinRackEntity.ModuleContext] so it can reach the world and its backing stack. */
+    private fun attachModule(placement: DinRackEntityPlacement) {
+        placement.entity.onAttach(ModuleContextImpl(placement.stack))
+    }
+
     /** Server-side only. Returns false if the interval is occupied or out of bounds. */
     fun placeModule(u: DINUnit, entity: DinRackEntity, stack: ItemStack): Boolean {
         if (stack.isEmpty) return false
         if (!canPlace(u, entity.width)) return false
         val list = mEntities ?: return false
         val oldTerminals = globalTerminalMap(entities)
-        list.add(DinRackEntityPlacement(u, entity, stack))
+        val placement = DinRackEntityPlacement(u, entity, stack)
+        list.add(placement)
+        attachModule(placement)
         remapConnections(oldTerminals)
         setChanged()
         invalidateInternal()
@@ -95,10 +104,17 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val placement = moduleAt(u) ?: return null
         val oldTerminals = globalTerminalMap(entities)
         if (mEntities?.remove(placement) != true) return null
+        placement.entity.onDetach()
         remapConnections(oldTerminals)
         setChanged()
         invalidateInternal()
         return placement
+    }
+
+    override fun remove() {
+        super.remove()
+        // Chunk unload or block removal: let modules release transient resources (e.g. a PLC's computer).
+        mEntities?.forEach { it.entity.onDetach() }
     }
 
     /**
@@ -218,7 +234,9 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
         // Modules must be parsed before super.read: ElectricBehaviour.read rebuilds the
         // circuit on the client (its "Rebuild" sync flag) and must see the new module list.
+        mEntities?.forEach { it.entity.onDetach() }
         mEntities = readModules(tag, registries, clientPacket)
+        mEntities?.forEach(::attachModule)
         shapeCache = null
         terminalCache = null
         dropStaleClientConnections()
@@ -294,6 +312,19 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val entity: DinRackEntity,
         val stack: ItemStack,
     )
+
+    private inner class ModuleContextImpl(override val stack: ItemStack) : DinRackEntity.ModuleContext {
+        override val level: Level
+            get() = this@DinRackBlockEntity.level ?: error("DIN rack module accessed a null level")
+        override val pos: BlockPos
+            get() = worldPosition
+        override val blockEntity: BlockEntity
+            get() = this@DinRackBlockEntity
+
+        override fun markChanged() = setChanged()
+
+        override fun requestSync() = sendData()
+    }
 
     /** Module-space terminal id, stable while the module stays installed. */
     private data class TerminalKey(val u: Int, val local: Int)
