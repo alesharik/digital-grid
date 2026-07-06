@@ -58,6 +58,13 @@ class DinRackPowerSupplyEntity: DinRackEntity {
         val d = PNJunctionWire(5.47e-9, 0.075, 22.0, 1.783, out, ctx.bus24V)
         ctx.builder.add(d)
         diode = d
+        // Bleeder across the input. With the input wire detached, the transformer
+        // constraint would otherwise reflect a battery-held bus voltage onto the
+        // open primary (vin = Vbus / ratio ≈ the old input voltage), so the
+        // undervoltage lockout never engages and the state sticks at WORKING.
+        // The bleeder's current would have to return backwards through the output
+        // diode, so a reflected voltage collapses; a real source is unaffected.
+        ctx.builder.connect(BLEEDER_RESISTANCE, ctx.terminalNode(0), ctx.terminalNode(1))
         input0 = ctx.terminalNode(0)
         input1 = ctx.terminalNode(1)
         outMid = out
@@ -71,11 +78,12 @@ class DinRackPowerSupplyEntity: DinRackEntity {
         val coupling = coupling ?: return DinRackEntity.TickResult.NONE
         val vin = (input0?.voltage ?: return DinRackEntity.TickResult.NONE) -
                 (input1?.voltage ?: return DinRackEntity.TickResult.NONE)
-        if (!vin.isFinite()) return DinRackEntity.TickResult.NONE
 
         // Undervoltage lockout with hysteresis: no output and no input draw.
+        // An unmeasurable input must lock too, or the ratio stays frozen at its
+        // last live value.
         val minInput = DigitalgridConfig.PSU_MIN_INPUT_VOLTAGE.get()
-        locked = abs(vin) < if (locked) minInput else minInput * 0.9
+        locked = !vin.isFinite() || abs(vin) < if (locked) minInput else minInput * 0.9
         if (locked) {
             foldback = 1.0
             coupling.setRatio(0f)
@@ -169,6 +177,11 @@ class DinRackPowerSupplyEntity: DinRackEntity {
         private const val SETPOINT = 24.8
         private const val TRANSFORMER_RESISTANCE = 0.1f
         private const val MAX_RATIO = 50.0
+
+        /** Across the input terminals; keeps an open primary from floating up
+         * to the reflected bus voltage (see [buildCircuit]). 47kΩ collapses the
+         * reflection to <4V worst-case while drawing ~1W from a 240V input. */
+        private const val BLEEDER_RESISTANCE = 47_000f
 
         private val lights = enumMapOf(
             State.NO_POWER to LightIndicator.off(PartialModels.DIN_POWER_SUPPLY_LIGHT),
