@@ -24,6 +24,7 @@ import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
 import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 import org.patryk3211.powergrid.electricity.sim.node.TransformerCoupling
 import org.patryk3211.powergrid.electricity.sim.special.PNJunctionWire
+import org.patryk3211.powergrid.utility.Unit
 import thedarkcolour.kotlinforforge.neoforge.kotlin.enumMapOf
 import java.util.stream.Stream
 import kotlin.math.abs
@@ -133,11 +134,21 @@ class DinRackPowerSupplyEntity: DinRackEntity {
     }
 
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
-        if (coupling == null) return false
+        val coupling = coupling ?: return false
 
         Lang.builder().translate("goggles.power_supply").style(ChatFormatting.GRAY).forGoggles(tooltip)
         Lang.builder().translate("goggles.state").style(ChatFormatting.GRAY)
             .space().add(state().text())
+            .forGoggles(tooltip, 1)
+
+        // The coupling's state value is the secondary branch current (= diode
+        // current, i.e. amps delivered to the bus); it rides Power Grid's node
+        // state sync, so it is client-usable. Negative values are only diode
+        // reverse leakage — clamp them away.
+        val current = coupling.stateValue
+        val amps = if (current.isFinite()) current.coerceAtLeast(0.0) else 0.0
+        Lang.builder().translate("goggles.current").style(ChatFormatting.GRAY)
+            .space().add(Unit.CURRENT.formatWithPrefixes(amps).style(ChatFormatting.AQUA))
             .forGoggles(tooltip, 1)
 
         return true
