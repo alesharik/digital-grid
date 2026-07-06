@@ -5,6 +5,8 @@
   "item.digitalgrid.din_rack_patch": "Rack Patch",
   "item.digitalgrid.din_rack_battery": "Rack Battery",
   "item.digitalgrid.din_rack_power_supply": "Rack Power Supply",
+  "item.digitalgrid.din_rack_plc": "Programmable Logic Controller",
+  "item.digitalgrid.din_rack_plc_io": "PLC Input/Output Module",
   "digitalgrid.goggles.state": "State:",
   "digitalgrid.goggles.voltage": "Voltage:",
   "digitalgrid.goggles.current": "Current:",

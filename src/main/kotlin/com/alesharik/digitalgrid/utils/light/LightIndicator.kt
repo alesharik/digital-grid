@@ -27,6 +27,10 @@ class LightIndicator(
         const val GREEN = 0x30E050
         const val RED = 0x981d1d
         const val BLACK = 0x807676
+        const val YELLOW = 0x897639
+        const val AQUAMARIN = 0x397873
+        const val PURPLE = 0x544070
+        const val ORANGE = 0x78411c
 
         fun off(model: PartialModel) = LightIndicator(model, BLACK, Blinker.NO_BLINK)
 
