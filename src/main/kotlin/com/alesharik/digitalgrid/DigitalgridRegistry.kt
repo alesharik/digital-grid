@@ -3,6 +3,7 @@ package com.alesharik.digitalgrid
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.DinRackRegistry
 import com.alesharik.digitalgrid.din.item.*
+import com.alesharik.digitalgrid.din.item.plc.DinRackPlcEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer

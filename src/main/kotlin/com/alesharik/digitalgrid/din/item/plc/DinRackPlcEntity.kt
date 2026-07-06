@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.din.item
+package com.alesharik.digitalgrid.din.item.plc
 
 import com.alesharik.digitalgrid.client.PartialModels
 import com.alesharik.digitalgrid.din.DINUnit
