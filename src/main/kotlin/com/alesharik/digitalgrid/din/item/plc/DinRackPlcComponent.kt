@@ -24,5 +24,5 @@ interface DinRackPlcComponent {
         bufferSource: MultiBufferSource,
         light: Int,
         overlay: Int
-    )
+    ) {}
 }
