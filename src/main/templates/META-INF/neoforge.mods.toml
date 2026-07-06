@@ -71,6 +71,13 @@ type = "required"
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
+# ComputerCraft: Tweaked — the DIN-rack PLC module embeds a CC computer.
+[[dependencies."${mod_id}"]]
+modId = "computercraft"
+type = "required"
+versionRange = "[1.120,)"
+ordering = "AFTER"
+side = "BOTH"
 
 # Features are specific properties of the game environment, that you may want to declare you require. This example declares
 # that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't

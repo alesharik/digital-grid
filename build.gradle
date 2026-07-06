@@ -31,6 +31,13 @@ repositories {
             includeGroupAndSubgroups("com.simibubi")
         }
     } // Flywheel, Registrate, Create
+
+    maven {
+        url "https://maven.squiddev.cc"
+        content {
+            includeGroup("cc.tweaked")
+        }
+    }
 }
 
 base {
@@ -128,6 +135,17 @@ dependencies {
 
     implementation "curse.maven:architectury-api-419699:5786327"
     implementation 'curse.maven:power-grid-1321420:7999916'
+
+    // Vanilla (i.e. for multi-loader systems)
+    compileOnly("cc.tweaked:cc-tweaked-$minecraft_version-common-api:$cctVersion")
+
+    // Forge Gradle
+    compileOnly("cc.tweaked:cc-tweaked-$minecraft_version-forge-api:$cctVersion")
+    // The PLC integration uses CC internal (dan200.computercraft.shared.*) classes — ServerComputer,
+    // ModRegistry, WiredModem* — which are not part of the -api artifacts, so the full mod jar must be
+    // on the compile classpath as well (kept as runtimeOnly too, for the dev runtime).
+    compileOnly("cc.tweaked:cc-tweaked-$minecraft_version-forge:$cctVersion")
+    runtimeOnly("cc.tweaked:cc-tweaked-$minecraft_version-forge:$cctVersion")
 
     // Example mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
