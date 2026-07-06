@@ -3,8 +3,10 @@ package com.alesharik.digitalgrid
 import com.alesharik.digitalgrid.client.PartialModels
 import net.minecraft.client.Minecraft
 import net.neoforged.bus.api.SubscribeEvent
+import net.neoforged.fml.ModLoadingContext
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.common.Mod
+import net.neoforged.fml.config.ModConfig
 import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -26,6 +28,7 @@ object Digitalgrid {
 
     init {
         DigitalgridRegistry.Registries.register(MOD_BUS)
+        ModLoadingContext.get().activeContainer.registerConfig(ModConfig.Type.SERVER, DigitalgridConfig.SPEC)
 
         runForDist(clientTarget = {
             PartialModels.init()

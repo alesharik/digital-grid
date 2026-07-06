@@ -6,15 +6,21 @@ import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.item.DinRackItem
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
+import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation
+import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour
+import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.Tag
+import net.minecraft.network.FriendlyByteBuf
+import net.minecraft.network.chat.Component
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Block.box
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
@@ -23,7 +29,8 @@ import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 import org.patryk3211.powergrid.electricity.wire.BlockWireEndpoint
 import java.util.stream.Stream
 
-class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(BlockEntities.DIN_RACK, pos, state), IElectric {
+class DinRackBlockEntity(pos: BlockPos, state: BlockState):
+    ElectricBlockEntity(BlockEntities.DIN_RACK, pos, state), IElectric, IHaveGoggleInformation {
     private var mEntities: MutableList<DinRackEntityPlacement>? = ArrayList()
     private var shapeCache: DirectionalVoxelShape? = null
     private var terminalCache: Array<TerminalBoundingBox>? = null
@@ -153,15 +160,59 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
 
     override fun buildCircuit(cb: IElectricEntity.CircuitBuilder) {
         cb.setTerminalCount(terminals.size)
+        val bus = BusNodes(cb)
         var off = 0
         for (en in entities) {
             en.entity.buildCircuit(CircuitContextImpl(
                 off = off,
                 terminalCount = en.entity.terminalBoundingBox.size,
                 builder = cb,
+                bus = bus,
             ))
             off += en.entity.terminalBoundingBox.size
         }
+    }
+
+    override fun addBehaviours(behaviours: MutableList<BlockEntityBehaviour>) {
+        super.addBehaviours(behaviours)
+        // Modules piggyback on Power Grid's periodic node state sync; module lists
+        // stay identical on both sides (same NBT order), keeping payloads aligned.
+        electricBehaviour.setSyncAppender(object : ElectricBehaviour.SyncAppender {
+            override fun writeToSync(buffer: FriendlyByteBuf) {
+                entities.forEach { it.entity.writeSync(buffer) }
+            }
+
+            override fun readFromSync(buffer: FriendlyByteBuf) {
+                entities.forEach { it.entity.readSync(buffer) }
+            }
+        })
+    }
+
+    override fun electricalTick() {
+        var save = false
+        var sync = false
+        for (placed in entities) {
+            when (placed.entity.electricalTick()) {
+                DinRackEntity.TickResult.SAVE -> save = true
+                DinRackEntity.TickResult.SAVE_AND_SYNC -> { save = true; sync = true }
+                DinRackEntity.TickResult.NONE -> {}
+            }
+        }
+        if (save) setChanged()
+        if (sync) sendData()
+    }
+
+    private fun targetedModule(be: DinRackBlockEntity): DinRackEntityPlacement? {
+        val hit = Minecraft.getInstance().hitResult as? BlockHitResult ?: return null
+        if (hit.blockPos != be.blockPos) return null
+        val u = DinRackBlock.hitToUnit(be.blockState, be.blockPos, hit)
+        return be.moduleAt(u)
+    }
+
+    /** Client-side only (Create's goggle overlay); shows the targeted module's info. */
+    override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
+        val placement = targetedModule(this) ?: return false
+        return placement.entity.addToGoggleTooltip(tooltip, isPlayerSneaking)
     }
 
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
@@ -247,11 +298,24 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState): ElectricBlockEntity(
     /** Module-space terminal id, stable while the module stays installed. */
     private data class TerminalKey(val u: Int, val local: Int)
 
-    class CircuitContextImpl(
+    /** Bus rails shared by every module context of a single circuit rebuild, created on first use. */
+    private class BusNodes(builder: IElectricEntity.CircuitBuilder) {
+        val plus: FloatingNode by lazy { builder.addInternalNode() }
+        val minus: FloatingNode by lazy { builder.addInternalNode() }
+    }
+
+    private class CircuitContextImpl(
         private val off: Int,
         private val terminalCount: Int,
-        override val builder: IElectricEntity.CircuitBuilder
+        override val builder: IElectricEntity.CircuitBuilder,
+        private val bus: BusNodes,
     ): DinRackEntity.CircuitContext {
+        override val bus24V: FloatingNode
+            get() = bus.plus
+
+        override val busMinus: FloatingNode
+            get() = bus.minus
+
         override fun terminalNode(idx: Int): FloatingNode {
             if (idx !in 0..<terminalCount) {
                 throw IllegalArgumentException("Could not select terminal node $idx, max nodes are $terminalCount")

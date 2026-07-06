@@ -91,22 +91,22 @@ class DinRackBlock: ElectricBlock(
         return super.useWithoutItem(state, level, pos, player, hit)
     }
 
-    private fun hitToUnit(state: BlockState, pos: BlockPos, hit: BlockHitResult): DINUnit {
-        val localX = hit.location.x - pos.x
-        val localZ = hit.location.z - pos.z
-        val northX = when (state.getValue(FACING)) {
-            Direction.EAST -> localZ
-            Direction.SOUTH -> 1.0 - localX
-            Direction.WEST -> 1.0 - localZ
-            else -> localX
-        }
-        return DINUnit(Mth.floor(northX * 16.0).coerceIn(0, 15))
-    }
-
     override fun getBlockEntityClass(): Class<DinRackBlockEntity> = DinRackBlockEntity::class.java
     override fun getBlockEntityType(): BlockEntityType<out DinRackBlockEntity> = DigitalgridRegistry.BlockEntities.DIN_RACK
 
     companion object {
         val FACING: DirectionProperty = HorizontalDirectionalBlock.FACING
+
+        fun hitToUnit(state: BlockState, pos: BlockPos, hit: BlockHitResult): DINUnit {
+            val localX = hit.location.x - pos.x
+            val localZ = hit.location.z - pos.z
+            val northX = when (state.getValue(FACING)) {
+                Direction.EAST -> localZ
+                Direction.SOUTH -> 1.0 - localX
+                Direction.WEST -> 1.0 - localZ
+                else -> localX
+            }
+            return DINUnit(Mth.floor(northX * 16.0).coerceIn(0, 15))
+        }
     }
 }

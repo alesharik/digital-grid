@@ -7,7 +7,9 @@ import net.minecraft.resources.ResourceLocation
 object PartialModels {
     val DIN_PATCH = dinModel("patch")
     val DIN_BATTERY = dinModel("battery")
+    val DIN_BATTERY_LIGHT = dinModel("battery_light")
     val DIN_POWER_SUPPLY = dinModel("power_supply")
+    val DIN_POWER_SUPPLY_LIGHT = dinModel("power_supply_light")
 
     // Forces the object initializer to run; must be called during client mod
     // construction so all partials exist before ModelEvent.RegisterAdditional.

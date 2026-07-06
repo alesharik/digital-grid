@@ -16,5 +16,5 @@
   "digitalgrid.goggles.battery.state.charged": "Charged",
   "digitalgrid.goggles.power_supply": "Power Supply",
   "digitalgrid.goggles.power_supply.state.working": "Working",
-  "digitalgrid.goggles.power_supply.state.off": "No power"
+  "digitalgrid.goggles.power_supply.state.no_power": "No power"
 }
