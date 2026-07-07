@@ -1,6 +1,7 @@
 package com.alesharik.digitalgrid.din.item.plc
 
 import com.alesharik.digitalgrid.DigitalgridConfig
+import com.alesharik.digitalgrid.DigitalgridRegistry
 import com.alesharik.digitalgrid.client.PartialModels
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
@@ -22,16 +23,20 @@ import net.createmod.catnip.render.CachedBuffers
 import net.createmod.catnip.render.SuperByteBuffer
 import net.minecraft.ChatFormatting
 import net.minecraft.client.renderer.MultiBufferSource
+import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
-import net.minecraft.server.level.ServerPlayer
-import net.minecraft.world.inventory.MenuConstructor
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.ItemInteractionResult
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
@@ -175,29 +180,6 @@ class DinRackPlcEntity: DinRackEntity {
         computer?.reboot()
     }
 
-    /** Opens this PLC's computer terminal GUI for [player]. Server-side; mirrors `/computercraft view`. */
-    fun openTerminal(player: ServerPlayer) {
-        val ctx = context
-        if (ctx == null) {
-            com.alesharik.digitalgrid.Digitalgrid.LOGGER.warn("[PLC] openTerminal: context is null (module not attached?) — aborting")
-            return
-        }
-        val computer = ensureComputer(ctx)
-        if (computer == null) {
-            com.alesharik.digitalgrid.Digitalgrid.LOGGER.warn("[PLC] openTerminal: ensureComputer returned null (level not ServerLevel?) — aborting")
-            return
-        }
-        com.alesharik.digitalgrid.Digitalgrid.LOGGER.info("[PLC] openTerminal: opening menu for player={} computerId={} instanceId={}", player.name.string, computer.id, computer.instanceUUID)
-        PlatformHelper.get().openMenu(
-            player,
-            Component.translatable("gui.computercraft.view_computer"),
-            MenuConstructor { id, inventory, _ ->
-                ComputerMenuWithoutInventory(ModRegistry.Menus.COMPUTER.get(), id, inventory, { true }, computer)
-            },
-            ComputerContainerData(computer, ItemStack.EMPTY),
-        )
-    }
-
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
         actionLight = tag.getBoolean("ActionLight")
         persistedAction = actionLight
@@ -234,6 +216,33 @@ class DinRackPlcEntity: DinRackEntity {
         WORK_LIGHTS[workState]?.render(be, ms, bufferSource)
         (if (actionLight) ACTION_LIGHT_ON else ACTION_LIGHT_OFF).render(be, ms, bufferSource)
         components.forEach { it.render(be, en, partialTicks, ms, bufferSource, light, overlay) }
+    }
+
+    override fun useItemOn(
+        item: ItemStack,
+        st: BlockState,
+        lv: Level,
+        pos: BlockPos,
+        player: Player,
+        hand: InteractionHand,
+        hit: BlockHitResult
+    ): ItemInteractionResult {
+        if (item.item != DigitalgridRegistry.Items.PLC_PROGRAMMER) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+        }
+
+        if (lv.isClientSide) return ItemInteractionResult.sidedSuccess(true)
+        val ctx = context ?: return ItemInteractionResult.FAIL
+        val computer = ensureComputer(ctx) ?: return ItemInteractionResult.FAIL
+        PlatformHelper.get().openMenu(
+            player,
+            Component.translatable("gui.computercraft.view_computer"),
+            { id, inventory, _ ->
+                ComputerMenuWithoutInventory(ModRegistry.Menus.COMPUTER.get(), id, inventory, { true }, computer)
+            },
+            ComputerContainerData(computer, ItemStack.EMPTY),
+        )
+        return ItemInteractionResult.sidedSuccess(false)
     }
 
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
