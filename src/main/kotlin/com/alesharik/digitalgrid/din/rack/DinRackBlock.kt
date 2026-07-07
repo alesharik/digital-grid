@@ -60,7 +60,7 @@ class DinRackBlock: ElectricBlock(
         hit: BlockHitResult
     ): ItemInteractionResult {
         // PLC terminal: right-click a PLC module to open its computer's terminal GUI.
-        if (item.item == DigitalgridRegistry.Items.PLC_TERMINAL) {
+        if (item.item == DigitalgridRegistry.Items.PLC_PROGRAMMER) {
             val module = getBlockEntityOptional(lv, pos).orElse(null)?.moduleAt(hitToUnit(st, pos, hit))?.entity
             com.alesharik.digitalgrid.Digitalgrid.LOGGER.info(
                 "[PLC] terminal branch: client={} unit={} module={}",
