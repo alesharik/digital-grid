@@ -108,10 +108,16 @@ interface DinRackEntity {
     interface CircuitContext {
         val builder: IElectricEntity.CircuitBuilder
 
-        /** Rack-internal +24V rail, shared by all modules of the rack. Created on first access. */
+        /**
+         * Rack-internal +24V rail, shared by all modules of the rack. Continues into adjacent
+         * racks placed side by side with the same facing.
+         */
         val bus24V: FloatingNode
 
-        /** Rack-internal return (minus) rail, shared by all modules of the rack. Created on first access. */
+        /**
+         * Rack-internal return (minus) rail, shared by all modules of the rack. Continues into
+         * adjacent racks placed side by side with the same facing.
+         */
         val busMinus: FloatingNode
 
         fun terminalNode(idx: Int): FloatingNode

@@ -10,6 +10,7 @@ import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour
 import net.minecraft.client.Minecraft
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -26,7 +27,9 @@ import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
+import org.patryk3211.powergrid.electricity.GlobalElectricNetworks
 import org.patryk3211.powergrid.electricity.base.*
+import org.patryk3211.powergrid.electricity.sim.ElectricWire
 import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 import org.patryk3211.powergrid.electricity.wire.BlockWireEndpoint
 import java.util.stream.Stream
@@ -36,6 +39,12 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     private var mEntities: MutableList<DinRackEntityPlacement>? = ArrayList()
     private var shapeCache: DirectionalVoxelShape? = null
     private var terminalCache: Array<TerminalBoundingBox>? = null
+
+    /** Sim wires continuing this rack's bus rails into the +u neighbor rack; owned by this rack. */
+    private val busBridges = ArrayList<ElectricWire>()
+
+    /** Cleared on invalidate so a neighbor's refresh never re-bridges to a rack being unloaded/removed. */
+    private var bridgeable = true
 
     val entities: List<DinRackEntityPlacement>
         get() = mEntities ?: emptyList()
@@ -47,11 +56,73 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         get() = terminalCache ?: buildTerminals().also { terminalCache = it }
 
     fun invalidateInternal() {
+        // The rebuild below recreates all external nodes (bus rails included), so bridge wires
+        // must detach first and re-resolve after — ours here, the -u neighbor's via the poke.
+        dropBusBridges()
         shapeCache = null
         terminalCache = null
         dropStaleClientConnections()
         level?.sendBlockUpdated(worldPosition, blockState, blockState, Block.UPDATE_ALL)
         electricBehaviour.rebuildCircuit(true)
+        refreshBusBridges()
+        neighborRack(plusU.opposite)?.refreshBusBridges()
+    }
+
+    /** World direction of increasing DIN unit; must agree with [DinRackBlock.hitToUnit]. */
+    private val plusU: Direction
+        get() = blockState.getValue(DinRackBlock.FACING).clockWise
+
+    /** Bus rails sit right after the module terminals in the external node list. */
+    private val busPlusIndex: Int
+        get() = terminals.size
+
+    private fun neighborRack(dir: Direction): DinRackBlockEntity? {
+        val lvl = level ?: return null
+        val neighborPos = worldPosition.relative(dir)
+        if (!lvl.isLoaded(neighborPos)) return null
+        val neighborState = lvl.getBlockState(neighborPos)
+        if (neighborState.block !is DinRackBlock) return null
+        if (neighborState.getValue(DinRackBlock.FACING) != blockState.getValue(DinRackBlock.FACING)) return null
+        return lvl.getBlockEntity(neighborPos) as? DinRackBlockEntity
+    }
+
+    private fun dropBusBridges() {
+        busBridges.forEach { it.remove() }
+        busBridges.clear()
+    }
+
+    /**
+     * Reconnects the bus rails to the +u neighbor rack, if it exists and faces the same way.
+     * Runs on both sides: the client keeps its own sim networks and resolves bridges the same
+     * way once the neighbor's block entity is present.
+     */
+    fun refreshBusBridges() {
+        dropBusBridges()
+        val lvl = level ?: return
+        if (!bridgeable || isRemoved) return
+        val neighbor = neighborRack(plusU) ?: return
+        if (!neighbor.bridgeable || neighbor.isRemoved) return
+        for (rail in 0..1) {
+            GlobalElectricNetworks.makeSimpleConnection(
+                lvl,
+                BlockWireEndpoint(worldPosition, busPlusIndex + rail),
+                BlockWireEndpoint(neighbor.worldPosition, neighbor.busPlusIndex + rail),
+                RAIL_RESISTANCE,
+            )?.let { busBridges.add(it) }
+        }
+    }
+
+    override fun initialize() {
+        super.initialize()
+        refreshBusBridges()
+        // A rack that appears (placed or chunk-loaded) is what the -u neighbor was waiting for.
+        neighborRack(plusU.opposite)?.refreshBusBridges()
+    }
+
+    override fun remove() {
+        // Detach cleanly before super lets ElectricBehaviour tear down the external nodes.
+        dropBusBridges()
+        super.remove()
     }
 
     /**
@@ -112,6 +183,12 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     }
 
     override fun invalidate() {
+        // Runs on both block break and chunk unload. On unload our block stays in the world, so
+        // flag ourselves unbridgeable before poking the -u neighbor — its refresh must drop the
+        // bridge into our about-to-be-removed nodes and not lay a new one.
+        bridgeable = false
+        dropBusBridges()
+        neighborRack(plusU.opposite)?.refreshBusBridges()
         // Create's SmartBlockEntity.setRemoved() calls invalidate() on BOTH block break and chunk
         // unload, whereas remove() is skipped on chunk unload — so release module transient resources
         // here (e.g. close a PLC's ServerComputer, so it can't linger and get duplicated on a fast
@@ -178,15 +255,24 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         .toTypedArray()
 
     override fun buildCircuit(cb: IElectricEntity.CircuitBuilder) {
-        cb.setTerminalCount(terminals.size)
-        val bus = BusNodes(cb)
+        // The bus rails are the two external nodes after the module terminals. External nodes
+        // survive internal-only rebuilds and chunk pause, so neighbor racks' bridge wires can
+        // attach to them; creating them unconditionally keeps the node count — and thus Power
+        // Grid's node state sync payload — identical on client and server regardless of which
+        // neighbor chunks happen to be loaded. terminal()/terminalCount() still expose only the
+        // module terminals, so players cannot wire to the rails directly.
+        val moduleTerminals = terminals.size
+        cb.setTerminalCount(moduleTerminals + 2)
+        val busPlus = cb.terminalNode(moduleTerminals)
+        val busMinus = cb.terminalNode(moduleTerminals + 1)
         var off = 0
         for (en in entities) {
             en.entity.buildCircuit(CircuitContextImpl(
                 off = off,
                 terminalCount = en.entity.terminalBoundingBox.size,
                 builder = cb,
-                bus = bus,
+                bus24V = busPlus,
+                busMinus = busMinus,
             ))
             off += en.entity.terminalBoundingBox.size
         }
@@ -332,24 +418,13 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     /** Module-space terminal id, stable while the module stays installed. */
     private data class TerminalKey(val u: Int, val local: Int)
 
-    /** Bus rails shared by every module context of a single circuit rebuild, created on first use. */
-    private class BusNodes(builder: IElectricEntity.CircuitBuilder) {
-        val plus: FloatingNode by lazy { builder.addInternalNode() }
-        val minus: FloatingNode by lazy { builder.addInternalNode() }
-    }
-
     private class CircuitContextImpl(
         private val off: Int,
         private val terminalCount: Int,
         override val builder: IElectricEntity.CircuitBuilder,
-        private val bus: BusNodes,
+        override val bus24V: FloatingNode,
+        override val busMinus: FloatingNode,
     ): DinRackEntity.CircuitContext {
-        override val bus24V: FloatingNode
-            get() = bus.plus
-
-        override val busMinus: FloatingNode
-            get() = bus.minus
-
         override fun terminalNode(idx: Int): FloatingNode {
             if (idx !in 0..<terminalCount) {
                 throw IllegalArgumentException("Could not select terminal node $idx, max nodes are $terminalCount")
@@ -360,6 +435,9 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
 
     companion object {
         const val RACK_WIDTH = 16
+
+        /** Resistance of one bus rail joint between two adjacent racks. */
+        private const val RAIL_RESISTANCE = 0.01f
 
         internal val BASE_SHAPE = Stream.of(
             box(0.0, 8.0, 13.0, 16.0, 10.0, 16.0),
