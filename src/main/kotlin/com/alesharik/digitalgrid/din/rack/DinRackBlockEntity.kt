@@ -111,9 +111,12 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         return placement
     }
 
-    override fun remove() {
-        super.remove()
-        // Chunk unload or block removal: let modules release transient resources (e.g. a PLC's computer).
+    override fun invalidate() {
+        // Create's SmartBlockEntity.setRemoved() calls invalidate() on BOTH block break and chunk
+        // unload, whereas remove() is skipped on chunk unload — so release module transient resources
+        // here (e.g. close a PLC's ServerComputer, so it can't linger and get duplicated on a fast
+        // reload). onDetach() is idempotent, so the extra call on a genuine block break is harmless.
+        super.invalidate()
         mEntities?.forEach { it.entity.onDetach() }
     }
 

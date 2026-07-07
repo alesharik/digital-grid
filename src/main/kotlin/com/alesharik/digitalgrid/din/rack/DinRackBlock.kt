@@ -3,9 +3,11 @@ package com.alesharik.digitalgrid.din.rack
 import com.alesharik.digitalgrid.DigitalgridRegistry
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.item.DinRackItem
+import com.alesharik.digitalgrid.din.item.plc.DinRackPlcEntity
 import com.simibubi.create.foundation.block.IBE
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.server.level.ServerPlayer
 import net.minecraft.util.Mth
 import net.minecraft.world.InteractionHand
 import net.minecraft.world.InteractionResult
@@ -57,6 +59,19 @@ class DinRackBlock: ElectricBlock(
         hand: InteractionHand,
         hit: BlockHitResult
     ): ItemInteractionResult {
+        // PLC terminal: right-click a PLC module to open its computer's terminal GUI.
+        if (item.item == DigitalgridRegistry.Items.PLC_TERMINAL) {
+            val module = getBlockEntityOptional(lv, pos).orElse(null)?.moduleAt(hitToUnit(st, pos, hit))?.entity
+            com.alesharik.digitalgrid.Digitalgrid.LOGGER.info(
+                "[PLC] terminal branch: client={} unit={} module={}",
+                lv.isClientSide, hitToUnit(st, pos, hit).value, module?.javaClass?.simpleName
+            )
+            val plc = module as? DinRackPlcEntity
+                ?: return super.useItemOn(item, st, lv, pos, player, hand, hit)
+            if (lv.isClientSide) return ItemInteractionResult.sidedSuccess(true)
+            plc.openTerminal(player as ServerPlayer)
+            return ItemInteractionResult.sidedSuccess(false)
+        }
         val dinItem = item.item as? DinRackItem
             ?: return super.useItemOn(item, st, lv, pos, player, hand, hit)
         val be = getBlockEntityOptional(lv, pos).orElse(null)

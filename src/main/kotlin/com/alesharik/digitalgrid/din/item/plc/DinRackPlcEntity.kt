@@ -13,6 +13,9 @@ import dan200.computercraft.shared.ModRegistry
 import dan200.computercraft.shared.computer.core.ComputerFamily
 import dan200.computercraft.shared.computer.core.ServerComputer
 import dan200.computercraft.shared.computer.core.TerminalSize
+import dan200.computercraft.shared.computer.inventory.ComputerMenuWithoutInventory
+import dan200.computercraft.shared.network.container.ComputerContainerData
+import dan200.computercraft.shared.platform.PlatformHelper
 import dan200.computercraft.shared.util.NonNegativeId
 import net.createmod.catnip.lang.LangBuilder
 import net.createmod.catnip.render.CachedBuffers
@@ -24,6 +27,9 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.Component
 import net.minecraft.server.level.ServerLevel
+import net.minecraft.server.level.ServerPlayer
+import net.minecraft.world.inventory.MenuConstructor
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.BooleanOp
@@ -140,7 +146,7 @@ class DinRackPlcEntity: DinRackEntity {
         )
         ctx.markChanged()
         computerId = id
-        val props = ServerComputer.properties(id, ComputerFamily.NORMAL)
+        val props = ServerComputer.properties(id, ComputerFamily.ADVANCED)
             .terminalSize(TerminalSize(TERM_WIDTH, TERM_HEIGHT))
         return ServerComputer(level, ctx.pos, props).also { c ->
             c.register()
@@ -167,6 +173,29 @@ class DinRackPlcEntity: DinRackEntity {
 
     internal fun luaReboot() {
         computer?.reboot()
+    }
+
+    /** Opens this PLC's computer terminal GUI for [player]. Server-side; mirrors `/computercraft view`. */
+    fun openTerminal(player: ServerPlayer) {
+        val ctx = context
+        if (ctx == null) {
+            com.alesharik.digitalgrid.Digitalgrid.LOGGER.warn("[PLC] openTerminal: context is null (module not attached?) — aborting")
+            return
+        }
+        val computer = ensureComputer(ctx)
+        if (computer == null) {
+            com.alesharik.digitalgrid.Digitalgrid.LOGGER.warn("[PLC] openTerminal: ensureComputer returned null (level not ServerLevel?) — aborting")
+            return
+        }
+        com.alesharik.digitalgrid.Digitalgrid.LOGGER.info("[PLC] openTerminal: opening menu for player={} computerId={} instanceId={}", player.name.string, computer.id, computer.instanceUUID)
+        PlatformHelper.get().openMenu(
+            player,
+            Component.translatable("gui.computercraft.view_computer"),
+            MenuConstructor { id, inventory, _ ->
+                ComputerMenuWithoutInventory(ModRegistry.Menus.COMPUTER.get(), id, inventory, { true }, computer)
+            },
+            ComputerContainerData(computer, ItemStack.EMPTY),
+        )
     }
 
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
