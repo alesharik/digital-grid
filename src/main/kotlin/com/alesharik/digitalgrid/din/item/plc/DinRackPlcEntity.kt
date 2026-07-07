@@ -157,10 +157,10 @@ class DinRackPlcEntity: DinRackEntity {
             c.register()
             computer = c
             // Built-in controls (action light, reboot, id) available to the program as the `plc` peripheral.
-            c.setPeripheral(ComputerSide.BOTTOM, PlcPeripheral(this))
+            c.setPeripheral(ComputerSide.BACK, PlcPeripheral(this))
             // Connect the computer to the internal modem bus and advertise any component peripherals.
             modemBus = PlcModemBus(ctx.blockEntity).also { bus ->
-                bus.attachTo(c, ComputerSide.LEFT)
+                bus.attachTo(c, ComputerSide.BOTTOM)
                 components.forEach { comp ->
                     comp.collectPeripherals().forEach { (name, peripheral) -> bus.register(name, peripheral) }
                 }
