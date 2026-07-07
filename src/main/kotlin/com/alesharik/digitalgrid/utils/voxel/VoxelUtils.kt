@@ -13,6 +13,15 @@ fun Direction.rotationYDegrees(): Float = when (this) {
     else -> 0f
 }
 
+/** Pose-stack Y rotation (around block center, inversed) matching [rotateDirection] for horizontal directions. */
+fun Direction.rotationYDegreesInv(): Float = when (this) {
+    Direction.NORTH -> 0f
+    Direction.EAST -> 90f
+    Direction.SOUTH -> 180f
+    Direction.WEST -> -90f
+    else -> 0f
+}
+
 fun VoxelShape.rotateDirection(direction: Direction): VoxelShape = when (direction) {
     Direction.NORTH -> this
     Direction.EAST -> this.rotateY(1)

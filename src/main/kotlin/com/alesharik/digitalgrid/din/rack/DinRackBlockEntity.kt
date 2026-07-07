@@ -6,6 +6,7 @@ import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.item.DinRackItem
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
+import com.alesharik.digitalgrid.utils.voxel.rotationYDegreesInv
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation
 import com.simibubi.create.foundation.blockEntity.behaviour.BlockEntityBehaviour
 import net.minecraft.client.Minecraft
@@ -21,6 +22,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.Block.box
+import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
@@ -392,7 +394,8 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         if (term < 0 || term >= terminals.size) {
             return null
         }
-        val t = terminals[term]
+        val direction = state.getValue(HorizontalDirectionalBlock.FACING)
+        val t = terminals[term].rotateAroundY(direction.rotationYDegreesInv().toInt())
         return t
     }
 
