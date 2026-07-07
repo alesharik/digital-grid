@@ -37,6 +37,7 @@ object DigitalgridRegistry {
                 output.accept(Items.DIN_RACK_PLC_IO)
                 output.accept(Items.DIN_RACK_PLC_RELAY)
                 output.accept(Items.PLC_TERMINAL)
+                output.accept(Items.PLASTIC)
             }
             .build()
     })
@@ -72,6 +73,8 @@ object DigitalgridRegistry {
         val DIN_RACK_PLC_RELAY by ITEMS.register("din_rack_plc_relay", { -> DinRackItem(Item.Properties(),
             DinRackPlcRelayEntity::class.java) })
         val PLC_TERMINAL by ITEMS.register("plc_terminal", { -> Item(Item.Properties()) })
+
+        val PLASTIC by ITEMS.register("plastic", { -> Item(Item.Properties()) })
     }
 
     object DinRackEntities {
