@@ -46,7 +46,7 @@ import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 import thedarkcolour.kotlinforforge.neoforge.kotlin.enumMapOf
 import java.util.stream.Stream
 
-class DinRackPlcEntity: DinRackEntity {
+class DinRackPlcEntity: DinRackEntity, PlcBusModule {
     override val shape: VoxelShape = SHAPE
     override val terminalBoundingBox: Array<TerminalBoundingBox> = emptyArray()
     override val width: DINUnit = DINUnit(3)
@@ -141,6 +141,21 @@ class DinRackPlcEntity: DinRackEntity {
         }
     }
 
+    override fun busConnector(): PlcBusConnector? = ensureModemBus()?.connector
+
+    /** The PLC's bus access point; created on demand server-side, independent of the computer. */
+    private fun ensureModemBus(): PlcModemBus? {
+        modemBus?.let { return it }
+        val ctx = context ?: return null
+        if (ctx.level.isClientSide) return null
+        return PlcModemBus(ctx.blockEntity).also { bus ->
+            modemBus = bus
+            components.forEach { comp ->
+                comp.collectPeripherals().forEach { (name, peripheral) -> bus.register(name, peripheral) }
+            }
+        }
+    }
+
     private fun ensureComputer(ctx: DinRackEntity.ModuleContext): ServerComputer? {
         computer?.let { return it }
         val level = ctx.level as? ServerLevel ?: return null
@@ -158,13 +173,8 @@ class DinRackPlcEntity: DinRackEntity {
             computer = c
             // Built-in controls (action light, reboot, id) available to the program as the `plc` peripheral.
             c.setPeripheral(ComputerSide.BACK, PlcPeripheral(this))
-            // Connect the computer to the internal modem bus and advertise any component peripherals.
-            modemBus = PlcModemBus(ctx.blockEntity).also { bus ->
-                bus.attachTo(c, ComputerSide.BOTTOM)
-                components.forEach { comp ->
-                    comp.collectPeripherals().forEach { (name, peripheral) -> bus.register(name, peripheral) }
-                }
-            }
+            // Connect the computer to the PLC bus; component peripherals are already advertised there.
+            ensureModemBus()?.attachTo(c, ComputerSide.BOTTOM)
         }
     }
 

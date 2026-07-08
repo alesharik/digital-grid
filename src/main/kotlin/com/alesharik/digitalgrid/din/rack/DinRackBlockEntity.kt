@@ -5,6 +5,7 @@ import com.alesharik.digitalgrid.DigitalgridRegistry.BlockEntities
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.item.DinRackItem
+import com.alesharik.digitalgrid.din.item.plc.PlcBusModule
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
 import com.alesharik.digitalgrid.utils.voxel.rotationYDegreesInv
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation
@@ -67,7 +68,11 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         level?.sendBlockUpdated(worldPosition, blockState, blockState, Block.UPDATE_ALL)
         electricBehaviour.rebuildCircuit(true)
         refreshBusBridges()
-        neighborRack(plusU.opposite)?.refreshBusBridges()
+        refreshPlcBusLinks()
+        neighborRack(plusU.opposite)?.also {
+            it.refreshBusBridges()
+            it.refreshPlcBusLinks()
+        }
     }
 
     /** World direction of increasing DIN unit; must agree with [DinRackBlock.hitToUnit]. */
@@ -114,11 +119,47 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         }
     }
 
+    /**
+     * (Re)connects the PLC bus nodes of directly touching bus modules, including the single
+     * cross-rack link into the +u neighbor. Connect-only: links only ever become stale
+     * through node removal (a module leaving detaches its node in onDetach, which severs
+     * its links and splits the network), so there is nothing to drop here; connectTo is
+     * idempotent. Server-only — CC wired networks do not exist on the client.
+     */
+    private fun refreshPlcBusLinks() {
+        val lvl = level ?: return
+        if (lvl.isClientSide) return
+        if (!bridgeable || isRemoved) return
+        val sorted = entities.sortedBy { it.u.value }
+        for (i in 0 until sorted.size - 1) {
+            val a = sorted[i]
+            val b = sorted[i + 1]
+            if (a.u.value + a.entity.width.value != b.u.value) continue
+            val connA = (a.entity as? PlcBusModule)?.busConnector() ?: continue
+            val connB = (b.entity as? PlcBusModule)?.busConnector() ?: continue
+            connA.connectTo(connB)
+        }
+        // Cross-rack: our edge module touching the +u neighbor's edge module.
+        val last = sorted.lastOrNull() ?: return
+        if (last.u.value + last.entity.width.value != RACK_WIDTH) return
+        val connLast = (last.entity as? PlcBusModule)?.busConnector() ?: return
+        val neighbor = neighborRack(plusU) ?: return
+        if (!neighbor.bridgeable || neighbor.isRemoved) return
+        val neighborFirst = neighbor.entities.minByOrNull { it.u.value } ?: return
+        if (neighborFirst.u.value != 0) return
+        val connFirst = (neighborFirst.entity as? PlcBusModule)?.busConnector() ?: return
+        connLast.connectTo(connFirst)
+    }
+
     override fun initialize() {
         super.initialize()
         refreshBusBridges()
+        refreshPlcBusLinks()
         // A rack that appears (placed or chunk-loaded) is what the -u neighbor was waiting for.
-        neighborRack(plusU.opposite)?.refreshBusBridges()
+        neighborRack(plusU.opposite)?.also {
+            it.refreshBusBridges()
+            it.refreshPlcBusLinks()
+        }
     }
 
     override fun remove() {
@@ -190,7 +231,10 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         // bridge into our about-to-be-removed nodes and not lay a new one.
         bridgeable = false
         dropBusBridges()
-        neighborRack(plusU.opposite)?.refreshBusBridges()
+        neighborRack(plusU.opposite)?.also {
+            it.refreshBusBridges()
+            it.refreshPlcBusLinks()
+        }
         // Create's SmartBlockEntity.setRemoved() calls invalidate() on BOTH block break and chunk
         // unload, whereas remove() is skipped on chunk unload — so release module transient resources
         // here (e.g. close a PLC's ServerComputer, so it can't linger and get duplicated on a fast

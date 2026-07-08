@@ -25,5 +25,14 @@
   "digitalgrid.goggles.power_supply.state.no_power": "No power",
   "digitalgrid.goggles.plc": "PLC",
   "digitalgrid.goggles.plc.state.on": "Working",
-  "digitalgrid.goggles.plc.state.off": "OFF"
+  "digitalgrid.goggles.plc.state.off": "OFF",
+  "digitalgrid.goggles.plc_io": "PLC I/O",
+  "digitalgrid.goggles.plc_io.pin": "Pin %1$s:",
+  "digitalgrid.goggles.plc_io.driven": "(driven)",
+  "digitalgrid.goggles.plc_relay": "PLC Relay",
+  "digitalgrid.goggles.plc_relay.state.closed": "Closed",
+  "digitalgrid.goggles.plc_relay.state.open": "Open",
+  "digitalgrid.goggles.plc_relay.coil": "Coil:",
+  "digitalgrid.goggles.plc_relay.coil.on": "Energized",
+  "digitalgrid.goggles.plc_relay.coil.off": "Off"
 }

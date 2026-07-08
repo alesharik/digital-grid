@@ -10,6 +10,11 @@ object DigitalgridConfig {
     val PLC_CURRENT_DRAW: ModConfigSpec.DoubleValue
     val PLC_MIN_VOLTAGE: ModConfigSpec.DoubleValue
     val PLC_BOOT_BLINK_TICKS: ModConfigSpec.IntValue
+    val PLC_IO_MAX_VOLTAGE: ModConfigSpec.DoubleValue
+    val PLC_IO_MAX_CURRENT: ModConfigSpec.DoubleValue
+    val PLC_IO_CURRENT_DRAW: ModConfigSpec.DoubleValue
+    val PLC_RELAY_COIL_CURRENT: ModConfigSpec.DoubleValue
+    val PLC_RELAY_CURRENT_DRAW: ModConfigSpec.DoubleValue
 
     init {
         val builder = ModConfigSpec.Builder()
@@ -39,6 +44,28 @@ object DigitalgridConfig {
         PLC_BOOT_BLINK_TICKS = builder
             .comment("Duration the PLC work light blinks (loading) after power-on before going solid, in ticks")
             .defineInRange("bootBlinkTicks", 40, 0, 1_000_000)
+        builder.pop()
+
+        builder.push("plcIo")
+        PLC_IO_MAX_VOLTAGE = builder
+            .comment("Maximum voltage a PLC I/O pin can be driven to, in volts")
+            .defineInRange("maxVoltage", 48.0, 0.0, 100_000.0)
+        PLC_IO_MAX_CURRENT = builder
+            // TODO: enforce this and break the module on overcurrent.
+            .comment("Maximum current a PLC I/O pin can carry, in amperes (not enforced yet)")
+            .defineInRange("maxCurrent", 1.0, 0.001, 100.0)
+        PLC_IO_CURRENT_DRAW = builder
+            .comment("PLC I/O module constant current draw from the internal 24V bus, in amperes (at nominal voltage)")
+            .defineInRange("currentDraw", 0.1, 0.001, 100.0)
+        builder.pop()
+
+        builder.push("plcRelay")
+        PLC_RELAY_COIL_CURRENT = builder
+            .comment("PLC relay coil current draw from the internal 24V bus, in amperes (at nominal voltage)")
+            .defineInRange("coilCurrent", 0.02, 0.001, 100.0)
+        PLC_RELAY_CURRENT_DRAW = builder
+            .comment("PLC relay module constant current draw from the internal 24V bus, in amperes (at nominal voltage)")
+            .defineInRange("currentDraw", 0.01, 0.001, 100.0)
         builder.pop()
 
         SPEC = builder.build()
