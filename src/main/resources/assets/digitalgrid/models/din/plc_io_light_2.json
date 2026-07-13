@@ -1,0 +1,19 @@
+{
+	"textures": {
+		"0": "digitalgrid:block/din/light",
+		"particle": "digitalgrid:block/din/light"
+	},
+	"elements": [
+		{
+			"from": [1.75, 9.25, 11],
+			"to": [2.25, 9.75, 10.7],
+			"faces": {
+				"south": {"uv": [0, 0, 8, 8], "texture": "#0"},
+				"east": {"uv": [0, 0, 8, 8], "texture": "#0"},
+				"west": {"uv": [0, 0, 8, 8], "texture": "#0"},
+				"up": {"uv": [0, 0, 8, 8], "texture": "#0"},
+				"down": {"uv": [0, 0, 8, 8], "texture": "#0"}
+			}
+		}
+	]
+}

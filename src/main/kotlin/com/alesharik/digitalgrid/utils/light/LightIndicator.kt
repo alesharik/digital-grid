@@ -37,5 +37,7 @@ class LightIndicator(
         fun green(model: PartialModel, blinker: Blinker = Blinker.NO_BLINK): LightIndicator = LightIndicator(model, GREEN, blinker)
 
         fun red(model: PartialModel, blinker: Blinker = Blinker.NO_BLINK): LightIndicator = LightIndicator(model, RED, blinker)
+
+        fun colored(model: PartialModel, color: Int, blinker: Blinker = Blinker.NO_BLINK) = LightIndicator(model, color, blinker)
     }
 }

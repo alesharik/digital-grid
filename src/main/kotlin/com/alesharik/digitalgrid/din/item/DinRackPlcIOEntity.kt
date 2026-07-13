@@ -189,6 +189,9 @@ class DinRackPlcIOEntity: DinRackEntity, PlcBusModule {
         val buffer = CachedBuffers.partial(PartialModels.DIN_PLC_IO, be)
         buffer.light<SuperByteBuffer>(light)
             .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
+        pins.forEachIndexed { index, pin ->
+            LIGHTS[index][pin.driven]!!.render(be, ms, bufferSource)
+        }
     }
 
     /** Client-side: pin voltages are computed from Power Grid's synced node states. */
@@ -244,6 +247,14 @@ class DinRackPlcIOEntity: DinRackEntity, PlcBusModule {
         private const val COMMON_RESISTANCE = 0.01f
         private const val DRIVER_RESISTANCE = 0.1f
         private const val SWITCH_RESISTANCE = 0.01f
+
+        private val LIGHTS_COLORS = arrayOf(LightIndicator.YELLOW, LightIndicator.AQUAMARIN, LightIndicator.PURPLE, LightIndicator.ORANGE)
+        private val LIGHTS = PartialModels.DIN_PLC_IO_LIGHTS.mapIndexed { idx, model ->
+            mapOf(
+                true to LightIndicator.colored(model, LIGHTS_COLORS[idx]),
+                false to LightIndicator.off(model)
+            )
+        }
 
         private val SHAPE = Stream.of(
             Block.box(0.0, 3.0, 14.0, 3.0, 8.0, 15.0),
