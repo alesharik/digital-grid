@@ -13,6 +13,7 @@ import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.context.BlockPlaceContext
+import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.BlockGetter
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -60,7 +61,7 @@ class DinRackBlock: ElectricBlock(
         val be = getBlockEntityOptional(lv, pos).orElse(null)
             ?: return ItemInteractionResult.FAIL
         val u = hitToUnit(st, pos, hit)
-        val module = be.moduleAt(hitToUnit(st, pos, hit))?.entity
+        val module = be.resolvedModuleAt(u)?.placement?.entity
         module?.let {
             val result = it.useItemOn(item, st, lv, pos, player, hand, hit)
             if (result != ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION) {
@@ -92,13 +93,36 @@ class DinRackBlock: ElectricBlock(
             val be = getBlockEntityOptional(level, pos).orElse(null)
                 ?: return super.useWithoutItem(state, level, pos, player, hit)
             val u = hitToUnit(state, pos, hit)
-            if (be.moduleAt(u) == null) return super.useWithoutItem(state, level, pos, player, hit)
+            val resolved = be.resolvedModuleAt(u)
+                ?: return super.useWithoutItem(state, level, pos, player, hit)
             if (level.isClientSide) return InteractionResult.sidedSuccess(true)
-            val removed = be.removeModuleAt(u) ?: return InteractionResult.FAIL
+            val removed = resolved.rack.removeModuleAt(resolved.placement.u) ?: return InteractionResult.FAIL
             player.inventory.placeItemBackInInventory(removed.stack)
             return InteractionResult.sidedSuccess(false)
         }
         return super.useWithoutItem(state, level, pos, player, hit)
+    }
+
+    override fun onRemove(state: BlockState, level: Level, pos: BlockPos, newState: BlockState, moved: Boolean) {
+        if (!level.isClientSide && !state.`is`(newState.block)) {
+            (level.getBlockEntity(pos) as? DinRackBlockEntity)?.dropModulesOnBreak()
+        }
+        super.onRemove(state, level, pos, newState, moved)
+    }
+
+    override fun onWrenched(state: BlockState, context: UseOnContext): InteractionResult {
+        // Create returns SUCCESS even when the rotation is a no-op (clicked face axis
+        // parallel to FACING) — predict it so a no-op tap doesn't dismantle the seams.
+        if (getRotatedBlockState(state, context.clickedFace) == state) {
+            return super.onWrenched(state, context)
+        }
+        val level = context.level
+        val be = if (level.isClientSide) null
+            else level.getBlockEntity(context.clickedPos) as? DinRackBlockEntity
+        val oldMinusNeighbor = be?.beforeWrenchRotation()
+        val result = super.onWrenched(state, context)
+        if (be != null && result.consumesAction()) be.afterWrenchRotation(oldMinusNeighbor)
+        return result
     }
 
     override fun getBlockEntityClass(): Class<DinRackBlockEntity> = DinRackBlockEntity::class.java

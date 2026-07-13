@@ -5,6 +5,7 @@ import com.alesharik.digitalgrid.DigitalgridRegistry.BlockEntities
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.item.DinRackItem
+import com.alesharik.digitalgrid.din.item.plc.PlcBusConnector
 import com.alesharik.digitalgrid.din.item.plc.PlcBusModule
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
 import com.alesharik.digitalgrid.utils.voxel.rotationYDegreesInv
@@ -26,6 +27,7 @@ import net.minecraft.world.level.block.Block.box
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
@@ -43,8 +45,15 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     private var shapeCache: DirectionalVoxelShape? = null
     private var terminalCache: Array<TerminalBoundingBox>? = null
 
+    /** Overhang of the -u neighbor's spanning module into this rack; persisted, server-authored. */
+    private var overhang: OverhangGhost? = null
+    private var proxyCache: Array<TerminalBoundingBox>? = null
+
     /** Sim wires continuing this rack's bus rails into the +u neighbor rack; owned by this rack. */
     private val busBridges = ArrayList<ElectricWire>()
+
+    /** Sim wires tying the +u neighbor's proxy nodes to this rack's spanning module terminals; owned by this rack. */
+    private val overhangBridges = ArrayList<ElectricWire>()
 
     /** Cleared on invalidate so a neighbor's refresh never re-bridges to a rack being unloaded/removed. */
     private var bridgeable = true
@@ -58,30 +67,48 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     private val terminals: Array<TerminalBoundingBox>
         get() = terminalCache ?: buildTerminals().also { terminalCache = it }
 
+    /** Ghost terminal boxes shifted into this rack's space; exposed after the own terminals. */
+    private val proxyTerminals: Array<TerminalBoundingBox>
+        get() = proxyCache ?: buildProxyTerminals().also { proxyCache = it }
+
+    /** Wireable external nodes: own module terminals then proxies; the two bus rails follow. */
+    private val exposedTerminalCount: Int
+        get() = terminals.size + proxyTerminals.size
+
+    private fun buildProxyTerminals(): Array<TerminalBoundingBox> {
+        val ghost = overhang ?: return emptyArray()
+        return ghost.proxiedTerminals
+            .map { ghost.entity.terminalBoundingBox[it].offset(ghost.offset / 16.0, 0.0, 0.0) }
+            .toTypedArray()
+    }
+
+    // The owner's renderer draws the spanning module into the +u neighbor's block space;
+    // without an inflated render AABB the overhang pops out of view when the owner's block
+    // leaves the frustum.
+    override fun createRenderBoundingBox(): AABB = AABB(worldPosition).inflate(1.0)
+
     fun invalidateInternal() {
         // The rebuild below recreates all external nodes (bus rails included), so bridge wires
         // must detach first and re-resolve after — ours here, the -u neighbor's via the poke.
         dropBusBridges()
+        dropOverhangBridges()
         shapeCache = null
         terminalCache = null
+        proxyCache = null
         dropStaleClientConnections()
         level?.sendBlockUpdated(worldPosition, blockState, blockState, Block.UPDATE_ALL)
         electricBehaviour.rebuildCircuit(true)
-        refreshBusBridges()
-        refreshPlcBusLinks()
-        neighborRack(plusU.opposite)?.also {
-            it.refreshBusBridges()
-            it.refreshPlcBusLinks()
-        }
+        refreshAllBridges()
+        neighborRack(plusU.opposite)?.refreshAllBridges()
     }
 
     /** World direction of increasing DIN unit; must agree with [DinRackBlock.hitToUnit]. */
     private val plusU: Direction
         get() = blockState.getValue(DinRackBlock.FACING).clockWise
 
-    /** Bus rails sit right after the module terminals in the external node list. */
+    /** Bus rails sit right after the exposed (module + proxy) terminals in the external node list. */
     private val busPlusIndex: Int
-        get() = terminals.size
+        get() = exposedTerminalCount
 
     private fun neighborRack(dir: Direction): DinRackBlockEntity? {
         val lvl = level ?: return null
@@ -119,6 +146,110 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         }
     }
 
+    private fun dropOverhangBridges() {
+        overhangBridges.forEach { it.remove() }
+        overhangBridges.clear()
+    }
+
+    /** Flat index of the placement's first terminal in this rack's external node list, or -1 if absent. */
+    private fun terminalOffsetOf(placement: DinRackEntityPlacement): Int {
+        var off = 0
+        for (p in entities) {
+            if (p === placement) return off
+            off += p.entity.terminalBoundingBox.size
+        }
+        return -1
+    }
+
+    /**
+     * Reconnects this rack's spanning module terminals to the +u neighbor's proxy nodes.
+     * Same lifecycle and both-sides semantics as [refreshBusBridges].
+     */
+    fun refreshOverhangBridges() {
+        dropOverhangBridges()
+        val lvl = level ?: return
+        if (!bridgeable || isRemoved) return
+        val spanning = entities.firstOrNull { it.u.value + it.entity.width.value > RACK_WIDTH } ?: return
+        val neighbor = neighborRack(plusU) ?: return
+        if (!neighbor.bridgeable || neighbor.isRemoved) return
+        val ghost = neighbor.overhang ?: return
+        if (ghost.offset != spanning.u.value - RACK_WIDTH) return
+        if (ghost.item !== spanning.stack.item) return
+        val ownBase = terminalOffsetOf(spanning)
+        if (ownBase < 0) return
+        val proxyBase = neighbor.terminals.size
+        ghost.proxiedTerminals.forEachIndexed { ordinal, local ->
+            GlobalElectricNetworks.makeSimpleConnection(
+                lvl,
+                BlockWireEndpoint(worldPosition, ownBase + local),
+                BlockWireEndpoint(neighbor.worldPosition, proxyBase + ordinal),
+                PROXY_RESISTANCE,
+            )?.let { overhangBridges.add(it) }
+        }
+    }
+
+    /** All cross-rack link kinds refreshed together — call on self after a rebuild, on a neighbor via poke. */
+    private fun refreshAllBridges() {
+        refreshBusBridges()
+        refreshOverhangBridges()
+        refreshPlcBusLinks()
+    }
+
+    /** Server-side only; runs the full terminal-shift ceremony so wires on proxies remap or break. */
+    internal fun setOverhang(ghost: OverhangGhost?) {
+        if (level?.isClientSide != false) return
+        if (ghost == null && overhang == null) return
+        // Snapshot before mutating the ghost — proxy keys must come from the OLD layout.
+        val old = globalTerminalMap(entities, overhang)
+        overhang = ghost
+        remapConnections(old)
+        setChanged()
+        invalidateInternal()
+    }
+
+    internal fun clearOverhang() = setOverhang(null)
+
+    /**
+     * Heals an orphaned ghost (owner rack gone or its spanning module lost while this rack
+     * was unloaded or the world was edited). Only acts when the owner's chunk is loaded —
+     * an unloaded owner is not evidence of anything.
+     */
+    private fun validateOverhang() {
+        if (level?.isClientSide != false) return
+        if (overhang == null) return
+        val lvl = level ?: return
+        if (!lvl.isLoaded(worldPosition.relative(plusU.opposite))) return
+        if (spanningOwnerPlacement() == null) clearOverhang()
+    }
+
+    /**
+     * Owner-side mirror of [validateOverhang]: heals a spanning placement whose +u holder
+     * lost the ghost while this rack was unloaded (holder broken or replaced). Re-authors
+     * the ghost when the holder can still take it, otherwise drops the module. Only acts
+     * when the holder's chunk is loaded.
+     */
+    private fun validateSpanning() {
+        if (level?.isClientSide != false) return
+        val lvl = level ?: return
+        val spanning = entities.firstOrNull { it.u.value + it.entity.width.value > RACK_WIDTH } ?: return
+        if (!lvl.isLoaded(worldPosition.relative(plusU))) return
+        val neighbor = neighborRack(plusU)
+        val consistent = neighbor?.overhang?.let {
+            it.offset == spanning.u.value - RACK_WIDTH && it.item === spanning.stack.item
+        } == true
+        if (consistent) return
+        // A ghost on the holder can only belong to this rack; inconsistent means stale.
+        if (neighbor?.overhang != null) neighbor.clearOverhang()
+        val over = spanning.u.value + spanning.entity.width.value - RACK_WIDTH
+        val item = spanning.stack.item as? DinRackItem
+        if (neighbor != null && item != null && neighbor.canAcceptOverhang(over)) {
+            neighbor.setOverhang(OverhangGhost.of(spanning.u.value - RACK_WIDTH, item))
+        } else {
+            removeModuleAt(spanning.u)
+            Block.popResource(lvl, worldPosition, spanning.stack)
+        }
+    }
+
     /**
      * (Re)connects the PLC bus nodes of directly touching bus modules, including the single
      * cross-rack link into the +u neighbor. Connect-only: links only ever become stale
@@ -140,31 +271,72 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
             connA.connectTo(connB)
         }
         // Cross-rack: our edge module touching the +u neighbor's edge module.
-        val last = sorted.lastOrNull() ?: return
-        if (last.u.value + last.entity.width.value != RACK_WIDTH) return
-        val connLast = (last.entity as? PlcBusModule)?.busConnector() ?: return
         val neighbor = neighborRack(plusU) ?: return
         if (!neighbor.bridgeable || neighbor.isRemoved) return
-        val neighborFirst = neighbor.entities.minByOrNull { it.u.value } ?: return
-        if (neighborFirst.u.value != 0) return
-        val connFirst = (neighborFirst.entity as? PlcBusModule)?.busConnector() ?: return
-        connLast.connectTo(connFirst)
+        plcSeamPair(neighbor)?.let { (a, b) -> a.connectTo(b) }
+    }
+
+    /** The touching PLC bus connector pair across this rack's +u seam into [neighbor], if any. */
+    private fun plcSeamPair(neighbor: DinRackBlockEntity): Pair<PlcBusConnector, PlcBusConnector>? {
+        val last = entities.maxByOrNull { it.u.value } ?: return null
+        // contact == 0: module ends flush at the seam; > 0: it overhangs and its far edge
+        // sits at the neighbor's local unit `contact`.
+        val contact = last.u.value + last.entity.width.value - RACK_WIDTH
+        if (contact < 0) return null
+        val connLast = (last.entity as? PlcBusModule)?.busConnector() ?: return null
+        val neighborFirst = neighbor.entities.minByOrNull { it.u.value } ?: return null
+        if (neighborFirst.u.value != contact) return null
+        val connFirst = (neighborFirst.entity as? PlcBusModule)?.busConnector() ?: return null
+        return connLast to connFirst
+    }
+
+    /**
+     * Severs the PLC seam links on both of this rack's seams. Needed before wrench rotation:
+     * seam links are connect-only by design (they normally die with node removal), so a
+     * facing change must tear them down explicitly or CC keeps routing across the old seam.
+     */
+    private fun disconnectPlcSeamLinks() {
+        if (level?.isClientSide != false) return
+        neighborRack(plusU)?.let { neighbor -> plcSeamPair(neighbor)?.let { (a, b) -> a.disconnectFrom(b) } }
+        neighborRack(plusU.opposite)?.let { minus -> minus.plcSeamPair(this)?.let { (a, b) -> a.disconnectFrom(b) } }
+    }
+
+    /**
+     * Server-side; called by the block before wrench rotation. Spanning geometry and
+     * cross-rack links cannot survive a facing change: drops seam-spanning modules and
+     * severs the PLC seam links while the old facing still resolves the seams. Returns
+     * the old -u neighbor so [afterWrenchRotation] can drop its misaligned bridges.
+     */
+    internal fun beforeWrenchRotation(): DinRackBlockEntity? {
+        dropSpanningModules()
+        disconnectPlcSeamLinks()
+        return neighborRack(plusU.opposite)
+    }
+
+    /** Server-side; relinks along the new facing and lets the old -u neighbor drop stale bridges. */
+    internal fun afterWrenchRotation(oldMinusNeighbor: DinRackBlockEntity?) {
+        invalidateInternal()
+        oldMinusNeighbor?.refreshAllBridges()
     }
 
     override fun initialize() {
         super.initialize()
-        refreshBusBridges()
-        refreshPlcBusLinks()
+        validateOverhang()
+        validateSpanning()
+        refreshAllBridges()
         // A rack that appears (placed or chunk-loaded) is what the -u neighbor was waiting for.
         neighborRack(plusU.opposite)?.also {
-            it.refreshBusBridges()
-            it.refreshPlcBusLinks()
+            it.validateSpanning()
+            it.refreshAllBridges()
         }
+        // ...and the +u neighbor may hold a ghost that only we can prove stale.
+        neighborRack(plusU)?.validateOverhang()
     }
 
     override fun remove() {
         // Detach cleanly before super lets ElectricBehaviour tear down the external nodes.
         dropBusBridges()
+        dropOverhangBridges()
         super.remove()
     }
 
@@ -175,14 +347,37 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
      */
     private fun dropStaleClientConnections() {
         if (level?.isClientSide != true) return
-        electricBehaviour.connections.keys.removeIf { it.terminal >= terminals.size }
+        electricBehaviour.connections.keys.removeIf { it.terminal >= exposedTerminalCount }
     }
 
-    fun canPlace(u: DINUnit, width: DINUnit): Boolean = canPlace(entities, u, width)
+    fun canPlace(u: DINUnit, width: DINUnit): Boolean {
+        if (!canStore(entities, overhang, u, width)) return false
+        val over = u.value + width.value - RACK_WIDTH
+        if (over > 0) {
+            val neighbor = neighborRack(plusU) ?: return false
+            if (!neighbor.canAcceptOverhang(over)) return false
+        }
+        return true
+    }
 
-    private fun canPlace(placements: List<DinRackEntityPlacement>, u: DINUnit, width: DINUnit): Boolean {
-        if (width.value <= 0) return false
-        if (u.value < 0 || u.value + width.value > RACK_WIDTH) return false
+    /** True if units [0, width) are free to host a -u neighbor's overhang. */
+    private fun canAcceptOverhang(width: Int): Boolean =
+        overhang == null && entities.none { it.u.value < width }
+
+    /**
+     * Local-only occupancy check: bounds, own placements and the ghost. Unlike the
+     * interactive path it allows u+width to run past RACK_WIDTH and never touches the
+     * neighbor — usable at read time when the level is not set yet.
+     */
+    private fun canStore(
+        placements: List<DinRackEntityPlacement>,
+        ghost: OverhangGhost?,
+        u: DINUnit,
+        width: DINUnit
+    ): Boolean {
+        if (width.value <= 0 || width.value > RACK_WIDTH) return false
+        if (u.value < 0 || u.value >= RACK_WIDTH) return false
+        if (ghost != null && u.value < ghost.occupiedWidth) return false
         return placements.none { placed ->
             val start = placed.u.value
             val end = start + placed.entity.width.value
@@ -192,6 +387,29 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
 
     fun moduleAt(u: DINUnit): DinRackEntityPlacement? =
         entities.firstOrNull { it.u.value <= u.value && u.value < it.u.value + it.entity.width.value }
+
+    /** A module resolved to the rack that owns it — [rack] is not `this` for overhang hits. */
+    data class ResolvedModule(val rack: DinRackBlockEntity, val placement: DinRackEntityPlacement)
+
+    /** The -u neighbor's placement that overhangs into this rack, if any. */
+    private fun spanningOwnerPlacement(): ResolvedModule? {
+        val ghost = overhang ?: return null
+        val owner = neighborRack(plusU.opposite) ?: return null
+        val placement = owner.entities.firstOrNull {
+            it.u.value + it.entity.width.value > RACK_WIDTH
+        } ?: return null
+        if (placement.u.value - RACK_WIDTH != ghost.offset) return null
+        if (placement.stack.item !== ghost.item) return null
+        return ResolvedModule(owner, placement)
+    }
+
+    /** Like [moduleAt], but also resolves units covered by the -u neighbor's overhang. */
+    fun resolvedModuleAt(u: DINUnit): ResolvedModule? {
+        moduleAt(u)?.let { return ResolvedModule(this, it) }
+        val ghost = overhang ?: return null
+        if (u.value >= ghost.occupiedWidth) return null
+        return spanningOwnerPlacement()
+    }
 
     /** Hands a module its [DinRackEntity.ModuleContext] so it can reach the world and its backing stack. */
     private fun attachModule(placement: DinRackEntityPlacement) {
@@ -203,26 +421,83 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         if (stack.isEmpty) return false
         if (!canPlace(u, entity.width)) return false
         val list = mEntities ?: return false
-        val oldTerminals = globalTerminalMap(entities)
+        val oldTerminals = globalTerminalMap(entities, overhang)
         val placement = DinRackEntityPlacement(u, entity, stack)
         list.add(placement)
         attachModule(placement)
         remapConnections(oldTerminals)
         setChanged()
         invalidateInternal()
+        if (u.value + entity.width.value > RACK_WIDTH) {
+            // After our own rebuild: our refresh above laid nothing (no ghost yet); the
+            // neighbor's rebuild inside setOverhang pokes us back and lays the bridges
+            // against both racks' final node sets.
+            (stack.item as? DinRackItem)?.let { item ->
+                neighborRack(plusU)?.setOverhang(OverhangGhost.of(u.value - RACK_WIDTH, item))
+            }
+        }
         return true
     }
 
     /** Server-side only. Removes the module covering [u]; returns its placement or null. */
     fun removeModuleAt(u: DINUnit): DinRackEntityPlacement? {
         val placement = moduleAt(u) ?: return null
-        val oldTerminals = globalTerminalMap(entities)
+        val oldTerminals = globalTerminalMap(entities, overhang)
         if (mEntities?.remove(placement) != true) return null
         placement.entity.onDetach()
         remapConnections(oldTerminals)
+        if (placement.u.value + placement.entity.width.value > RACK_WIDTH) {
+            neighborRack(plusU)?.clearOverhang()
+        }
         setChanged()
         invalidateInternal()
         return placement
+    }
+
+    /**
+     * Server-side; called by the block on real removal (not chunk unload), while this block
+     * entity is still alive. Drops every module touching this rack: contained modules, this
+     * rack's own spanning module, and the -u owner's module overhanging into this rack.
+     */
+    fun dropModulesOnBreak() {
+        val lvl = level ?: return
+        entities.forEach { Block.popResource(lvl, worldPosition, it.stack) }
+        if (entities.any { it.u.value + it.entity.width.value > RACK_WIDTH }) {
+            neighborRack(plusU)?.clearOverhang()
+        }
+        if (overhang != null) {
+            // Resolve the owner first — spanningOwnerPlacement() reads the ghost. Then drop
+            // the ghost without ceremony so the owner's clearOverhang poke below becomes a
+            // no-op instead of rebuilding a dying circuit.
+            val resolved = spanningOwnerPlacement()
+            overhang = null
+            resolved?.let { (owner, placement) ->
+                owner.removeModuleAt(placement.u)
+                Block.popResource(lvl, owner.worldPosition, placement.stack)
+            }
+        }
+    }
+
+    /**
+     * Server-side; removes and drops any module spanning this rack's seams (its own spanning
+     * module and the -u owner's overhang) — used before wrench rotation, which the spanning
+     * geometry cannot survive.
+     */
+    fun dropSpanningModules() {
+        val lvl = level ?: return
+        entities.firstOrNull { it.u.value + it.entity.width.value > RACK_WIDTH }?.let {
+            removeModuleAt(it.u)
+            Block.popResource(lvl, worldPosition, it.stack)
+        }
+        if (overhang != null) {
+            val resolved = spanningOwnerPlacement()
+            if (resolved != null) {
+                resolved.rack.removeModuleAt(resolved.placement.u)
+                Block.popResource(lvl, resolved.rack.worldPosition, resolved.placement.stack)
+            } else {
+                clearOverhang()
+            }
+        }
     }
 
     override fun invalidate() {
@@ -231,10 +506,8 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         // bridge into our about-to-be-removed nodes and not lay a new one.
         bridgeable = false
         dropBusBridges()
-        neighborRack(plusU.opposite)?.also {
-            it.refreshBusBridges()
-            it.refreshPlcBusLinks()
-        }
+        dropOverhangBridges()
+        neighborRack(plusU.opposite)?.refreshAllBridges()
         // Create's SmartBlockEntity.setRemoved() calls invalidate() on BOTH block break and chunk
         // unload, whereas remove() is skipped on chunk unload — so release module transient resources
         // here (e.g. close a PLC's ServerComputer, so it can't linger and get duplicated on a fast
@@ -252,7 +525,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
      */
     private fun remapConnections(oldTerminals: Map<Int, TerminalKey>) {
         if (level?.isClientSide != false) return
-        val newTerminals = globalTerminalMap(entities).entries.associate { (idx, key) -> key to idx }
+        val newTerminals = globalTerminalMap(entities, overhang).entries.associate { (idx, key) -> key to idx }
         // Snapshot: endpointRemoved/setEndpointX mutate the live map reentrantly.
         val snapshot = electricBehaviour.connections.entries.map { it.key to it.value.toList() }
         for ((endpoint, wires) in snapshot) {
@@ -276,7 +549,10 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         }
     }
 
-    private fun globalTerminalMap(placements: List<DinRackEntityPlacement>): Map<Int, TerminalKey> {
+    private fun globalTerminalMap(
+        placements: List<DinRackEntityPlacement>,
+        ghost: OverhangGhost?
+    ): Map<Int, TerminalKey> {
         val map = HashMap<Int, TerminalKey>()
         var off = 0
         for (placed in placements) {
@@ -285,14 +561,23 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
             }
             off += placed.entity.terminalBoundingBox.size
         }
+        ghost?.proxiedTerminals?.forEachIndexed { ordinal, local ->
+            map[off + ordinal] = TerminalKey(ghost.offset, local)
+        }
         return map
     }
 
     private fun buildShape(): DirectionalVoxelShape {
-        val combined = entities.fold(BASE_SHAPE) { acc, placed ->
+        var combined = entities.fold(BASE_SHAPE) { acc, placed ->
             Shapes.join(acc, placed.entity.shape.move(placed.u.toDouble() / 16.0, 0.0, 0.0), BooleanOp.OR)
         }
-        return DirectionalVoxelShape(combined.optimize())
+        overhang?.let {
+            combined = Shapes.join(combined, it.entity.shape.move(it.offset / 16.0, 0.0, 0.0), BooleanOp.OR)
+        }
+        // Clip to the block cell: a spanning module's shape must not leak out of the owner
+        // (hit attribution would depend on the ray path), and the ghost's part that still
+        // belongs to the owner must not leak out of this rack.
+        return DirectionalVoxelShape(Shapes.join(combined, Shapes.block(), BooleanOp.AND).optimize())
     }
 
     private fun buildTerminals() = entities
@@ -301,16 +586,19 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         .toTypedArray()
 
     override fun buildCircuit(cb: IElectricEntity.CircuitBuilder) {
-        // The bus rails are the two external nodes after the module terminals. External nodes
+        // The bus rails are the two external nodes after the exposed terminals. External nodes
         // survive internal-only rebuilds and chunk pause, so neighbor racks' bridge wires can
         // attach to them; creating them unconditionally keeps the node count — and thus Power
         // Grid's node state sync payload — identical on client and server regardless of which
-        // neighbor chunks happen to be loaded. terminal()/terminalCount() still expose only the
-        // module terminals, so players cannot wire to the rails directly.
-        val moduleTerminals = terminals.size
-        cb.setTerminalCount(moduleTerminals + 2)
-        val busPlus = cb.terminalNode(moduleTerminals)
-        val busMinus = cb.terminalNode(moduleTerminals + 1)
+        // neighbor chunks happen to be loaded. terminal()/terminalCount() expose only the module
+        // and proxy terminals, so players cannot wire to the rails directly.
+        // Exposed = own module terminals + proxy terminals for the -u neighbor's overhang.
+        // Proxy nodes carry no internal connections; the owner rack bridges them to its
+        // real terminal nodes with sim wires. setTerminalCount creates them eagerly.
+        val exposed = exposedTerminalCount
+        cb.setTerminalCount(exposed + 2)
+        val busPlus = cb.terminalNode(exposed)
+        val busMinus = cb.terminalNode(exposed + 1)
         var off = 0
         for (en in entities) {
             en.entity.buildCircuit(CircuitContextImpl(
@@ -353,16 +641,16 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         if (sync) sendData()
     }
 
-    private fun targetedModule(be: DinRackBlockEntity): DinRackEntityPlacement? {
+    private fun targetedModule(): DinRackEntityPlacement? {
         val hit = Minecraft.getInstance().hitResult as? BlockHitResult ?: return null
-        if (hit.blockPos != be.blockPos) return null
-        val u = DinRackBlock.hitToUnit(be.blockState, be.blockPos, hit)
-        return be.moduleAt(u)
+        if (hit.blockPos != blockPos) return null
+        val u = DinRackBlock.hitToUnit(blockState, blockPos, hit)
+        return resolvedModuleAt(u)?.placement
     }
 
     /** Client-side only (Create's goggle overlay); shows the targeted module's info. */
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
-        val placement = targetedModule(this) ?: return false
+        val placement = targetedModule() ?: return false
         return placement.entity.addToGoggleTooltip(tooltip, isPlayerSneaking)
     }
 
@@ -370,10 +658,16 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         // Modules must be parsed before super.read: ElectricBehaviour.read rebuilds the
         // circuit on the client (its "Rebuild" sync flag) and must see the new module list.
         mEntities?.forEach { it.entity.onDetach() }
+        overhang = if (tag.contains("Overhang", Tag.TAG_COMPOUND.toInt())) {
+            OverhangGhost.read(tag.getCompound("Overhang")).also {
+                if (it == null) Digitalgrid.LOGGER.warn("Dropping DIN rack overhang at {}: unparseable tag", worldPosition)
+            }
+        } else null
         mEntities = readModules(tag, registries, clientPacket)
         mEntities?.forEach(::attachModule)
         shapeCache = null
         terminalCache = null
+        proxyCache = null
         dropStaleClientConnections()
         super.read(tag, registries, clientPacket)
         invalidateInternal()
@@ -404,7 +698,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
                 entity.read(entry.getCompound("Data"), registries, clientPacket)
             }
             val u = DINUnit(entry.getInt("U"))
-            if (!canPlace(rebuilt, u, entity.width)) {
+            if (!canStore(rebuilt, overhang, u, entity.width)) {
                 Digitalgrid.LOGGER.warn("Skipping DIN module at {}: invalid or overlapping position {}", worldPosition, u.value)
                 continue
             }
@@ -427,20 +721,25 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
             list.add(entry)
         }
         tag.put("Modules", list)
+        overhang?.let { tag.put("Overhang", it.write()) }
     }
 
-    override fun terminalCount(): Int = terminals.size
+    override fun terminalCount(): Int = exposedTerminalCount
 
     override fun terminal(
         state: BlockState,
         term: Int
     ): ITerminalPlacement? {
-        if (term < 0 || term >= terminals.size) {
-            return null
+        val own = terminals
+        val proxies = proxyTerminals
+        val box = when {
+            term < 0 -> return null
+            term < own.size -> own[term]
+            term < own.size + proxies.size -> proxies[term - own.size]
+            else -> return null
         }
         val direction = state.getValue(HorizontalDirectionalBlock.FACING)
-        val t = terminals[term].rotateAroundY(direction.rotationYDegreesInv().toInt())
-        return t
+        return box.rotateAroundY(direction.rotationYDegreesInv().toInt())
     }
 
     data class DinRackEntityPlacement(
@@ -485,6 +784,9 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
 
         /** Resistance of one bus rail joint between two adjacent racks. */
         private const val RAIL_RESISTANCE = 0.01f
+
+        /** Proxy terminals are the same physical terminal — keep the bridge nearly ideal. */
+        private const val PROXY_RESISTANCE = 0.001f
 
         internal val BASE_SHAPE = Stream.of(
             box(0.0, 8.0, 13.0, 16.0, 10.0, 16.0),

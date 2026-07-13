@@ -38,6 +38,11 @@ class PlcBusConnector(private val rack: BlockEntity) {
         node.connectTo(other.node)
     }
 
+    /** Severs one link; CC ignores absent connections. */
+    fun disconnectFrom(other: PlcBusConnector) {
+        node.disconnectFrom(other.node)
+    }
+
     /** Tear down: severs all links (splitting the network) and drops advertised peripherals. */
     fun remove() {
         node.remove()

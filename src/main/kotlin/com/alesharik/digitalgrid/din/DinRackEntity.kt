@@ -35,6 +35,11 @@ interface DinRackEntity {
         overlay: Int
     )
 
+    /**
+     * Right-click on this module. For a module spanning onto the neighbor rack, clicks on the
+     * overhang are delegated: [pos], [st] and [hit] then describe the clicked (neighbor) rack,
+     * not the owner — use [ModuleContext] from [onAttach] for the owning rack's frame.
+     */
     fun useItemOn(
         item: ItemStack,
         st: BlockState,
