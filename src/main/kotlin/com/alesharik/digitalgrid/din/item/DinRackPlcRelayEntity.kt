@@ -9,6 +9,7 @@ import com.alesharik.digitalgrid.din.item.plc.PlcBusConnector
 import com.alesharik.digitalgrid.din.item.plc.PlcBusModule
 import com.alesharik.digitalgrid.din.item.plc.PlcRelayPeripheral
 import com.alesharik.digitalgrid.utils.Lang
+import com.alesharik.digitalgrid.utils.light.LightIndicator
 import com.mojang.blaze3d.vertex.PoseStack
 import com.simibubi.create.foundation.render.RenderTypes
 import dan200.computercraft.shared.util.NonNegativeId
@@ -55,6 +56,10 @@ class DinRackPlcRelayEntity: DinRackEntity, PlcBusModule {
     /** Contact actually closed (coil energized and rail powered); synced for goggles. */
     @Volatile
     private var closed = false
+
+    /** Contact is powered. Synced for light */
+    @Volatile
+    private var working = false
 
     override fun onAttach(ctx: DinRackEntity.ModuleContext) {
         context = ctx
@@ -105,6 +110,7 @@ class DinRackPlcRelayEntity: DinRackEntity, PlcBusModule {
         if (coil.state != cmd) coil.state = cmd
         // Pull in at PULL_IN_VOLTAGE, drop out below 0.9x — rail power loss opens the
         // contact regardless of the command (fail-safe).
+        working = v.isFinite() && v >= if (closed) PULL_IN_VOLTAGE * 0.9 else PULL_IN_VOLTAGE
         closed = cmd && v.isFinite() && v >= if (closed) PULL_IN_VOLTAGE * 0.9 else PULL_IN_VOLTAGE
         if (contact.state != closed) contact.state = closed
 
@@ -138,13 +144,14 @@ class DinRackPlcRelayEntity: DinRackEntity, PlcBusModule {
     }
 
     override fun writeSync(buffer: FriendlyByteBuf) {
-        buffer.writeByte((if (commanded) 1 else 0) or (if (closed) 2 else 0))
+        buffer.writeByte((if (commanded) 1 else 0) or (if (closed) 2 else 0) or (if (working) 4 else 0))
     }
 
     override fun readSync(buffer: FriendlyByteBuf) {
         val b = buffer.readByte().toInt()
         commanded = (b and 1) != 0
         closed = (b and 2) != 0
+        working = (b and 4) != 0
     }
 
     override fun render(
@@ -159,6 +166,11 @@ class DinRackPlcRelayEntity: DinRackEntity, PlcBusModule {
         val buffer = CachedBuffers.partial(PartialModels.DIN_PLC_RELAY, be)
         buffer.light<SuperByteBuffer>(light)
             .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
+        if (working) {
+            (if (closed) LIGHT_ON else LIGHT_OFF).render(be, ms, bufferSource)
+        } else {
+            LIGHT_NO_POWER.render(be, ms, bufferSource)
+        }
     }
 
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
@@ -189,6 +201,11 @@ class DinRackPlcRelayEntity: DinRackEntity, PlcBusModule {
 
         /** Key of the module-id sequence in CC's id store. */
         private const val ID_STORE = "digitalgrid_plc_relay"
+
+        /** Action light: program-controlled via the `plc` peripheral. */
+        private val LIGHT_ON = LightIndicator(PartialModels.DIN_PLC_RELAY_LIGHT, LightIndicator.GREEN)
+        private val LIGHT_OFF = LightIndicator(PartialModels.DIN_PLC_RELAY_LIGHT, LightIndicator.RED)
+        private val LIGHT_NO_POWER = LightIndicator.off(PartialModels.DIN_PLC_RELAY_LIGHT)
 
         private val SHAPE = Stream.of(
             Block.box(0.0, 3.0, 14.0, 2.0, 8.0, 15.0),

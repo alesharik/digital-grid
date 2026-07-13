@@ -15,6 +15,7 @@ object PartialModels {
     val DIN_PLC_ACTION_LIGHT = dinModel("plc_action_light")
     val DIN_PLC_IO = dinModel("plc_io")
     val DIN_PLC_RELAY = dinModel("plc_relay")
+    val DIN_PLC_RELAY_LIGHT = dinModel("plc_relay_light")
 
     // Forces the object initializer to run; must be called during client mod
     // construction so all partials exist before ModelEvent.RegisterAdditional.
