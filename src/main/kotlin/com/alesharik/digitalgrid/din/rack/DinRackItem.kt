@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.din.item
+package com.alesharik.digitalgrid.din.rack
 
 import com.alesharik.digitalgrid.din.DinRackEntity
 import net.minecraft.world.item.Item

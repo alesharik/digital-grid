@@ -5,10 +5,16 @@ import com.alesharik.digitalgrid.DigitalgridRegistry
 import com.alesharik.digitalgrid.client.PartialModels
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
+import com.alesharik.digitalgrid.din.behavior.Behavior
+import com.alesharik.digitalgrid.din.behavior.digibus.DigibusModemBehavior
+import com.alesharik.digitalgrid.din.behavior.powergrid.PowerGridBehavior
+import com.alesharik.digitalgrid.din.behavior.powergrid.WorkDrawBehavior
 import com.alesharik.digitalgrid.utils.Lang
 import com.alesharik.digitalgrid.utils.light.LightIndicator
 import com.mojang.blaze3d.vertex.PoseStack
 import com.simibubi.create.foundation.render.RenderTypes
+import dan200.computercraft.api.lua.LuaFunction
+import dan200.computercraft.api.peripheral.IPeripheral
 import dan200.computercraft.core.computer.ComputerSide
 import dan200.computercraft.shared.ModRegistry
 import dan200.computercraft.shared.computer.core.ComputerFamily
@@ -41,174 +47,24 @@ import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
-import org.patryk3211.powergrid.electricity.sim.SwitchedWire
-import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 import thedarkcolour.kotlinforforge.neoforge.kotlin.enumMapOf
 import java.util.stream.Stream
 
-class DinRackPlcEntity: DinRackEntity, PlcBusModule {
+class DinRackPlcEntity: DinRackEntity {
     override val shape: VoxelShape = SHAPE
     override val terminalBoundingBox: Array<TerminalBoundingBox> = emptyArray()
     override val width: DINUnit = DINUnit(3)
 
-    private var load: SwitchedWire? = null
-    private var busPlus: FloatingNode? = null
-    private var busMinus: FloatingNode? = null
+    private val modemBehavior = DigibusModemBehavior()
+    private val workDrawBehavior by lazy { WorkDrawBehavior.forBus(DigitalgridConfig.CONFIG.plc.currentDraw) }
+    private val computerBehavior by lazy { ComputerBehavior(workDrawBehavior, modemBehavior) }
 
-    /** True while the internal 24V bus supplies enough voltage to run. */
-    private var powered = false
-
-    /** Derived each server tick, synced to clients for the work light. */
-    private var workState = WorkState.OFF
-
-    /** Set from the computer thread via the `plc` peripheral; read on the server tick. */
-    @Volatile
-    private var actionLight = false
-
-    /** Last [actionLight] value persisted, to request a save only when it changes. */
-    private var persistedAction = false
-
-    /** Server-only live computer; created lazily from the persisted id, closed on detach. */
-    private var computer: ServerComputer? = null
-    private var modemBus: PlcModemBus? = null
-    private var context: DinRackEntity.ModuleContext? = null
-
-    /** Cached computer id (also stored on the item's data component); -1 until assigned. */
-    private var computerId = -1
-
-    /** Pluggable sub-components (wireless, watchdog, …). Empty for now; populated later. */
-    private val components = mutableListOf<DinRackPlcComponent>()
-
-    override fun onAttach(ctx: DinRackEntity.ModuleContext) {
-        context = ctx
-    }
-
-    override fun onDetach() {
-        modemBus?.remove()
-        modemBus = null
-        computer?.close()
-        computer = null
-        context = null
-    }
-
-    override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
-        // Model the controller as a resistive load across the rack's 24V rail, sized for the
-        // configured nominal current (R = V / I). The switch lets the PLC drop its draw entirely
-        // when it force-shuts-down on undervoltage.
-        val resistance = (NOMINAL_VOLTAGE / DigitalgridConfig.PLC_CURRENT_DRAW.get()).toFloat()
-        load = ctx.builder.connectSwitch(resistance, ctx.bus24V, ctx.busMinus, powered)
-        busPlus = ctx.bus24V
-        busMinus = ctx.busMinus
-    }
-
-    private fun railVoltage(): Double {
-        val plus = busPlus ?: return 0.0
-        val minus = busMinus ?: return 0.0
-        return plus.voltage - minus.voltage
-    }
-
-    override fun electricalTick(): DinRackEntity.TickResult {
-        val ctx = context ?: return DinRackEntity.TickResult.NONE
-        val load = load ?: return DinRackEntity.TickResult.NONE
-        val v = railVoltage()
-        val minV = DigitalgridConfig.PLC_MIN_VOLTAGE.get()
-        val wasPowered = powered
-        // Undervoltage lockout with hysteresis: drop out below minV, recover only back at minV.
-        powered = v.isFinite() && v >= if (wasPowered) minV * 0.9 else minV
-        if (load.state != powered) load.state = powered
-
-        val computer = ensureComputer(ctx)
-        if (computer != null) {
-            // CC's registry ticks the computer; keepAlive stops it from timing out and unloading.
-            computer.keepAlive()
-            if (powered && !computer.isOn) computer.turnOn()
-            else if (!powered && computer.isOn) computer.shutdown()  // force shutdown on power loss
-        }
-
-        workState = when {
-            !powered -> WorkState.OFF
-            computer == null || computer.isOn -> WorkState.ON
-            else -> WorkState.OFF
-        }
-
-        // Light state rides Power Grid's periodic node-state sync (~every 5 ticks) via the rack's
-        // sync appender, so only a persistent change needs a save here.
-        return if (actionLight != persistedAction) {
-            persistedAction = actionLight
-            DinRackEntity.TickResult.SAVE
-        } else {
-            DinRackEntity.TickResult.NONE
-        }
-    }
-
-    override fun busConnector(): PlcBusConnector? = ensureModemBus()?.connector
-
-    /** The PLC's bus access point; created on demand server-side, independent of the computer. */
-    private fun ensureModemBus(): PlcModemBus? {
-        modemBus?.let { return it }
-        val ctx = context ?: return null
-        if (ctx.level.isClientSide) return null
-        return PlcModemBus(ctx.blockEntity).also { bus ->
-            modemBus = bus
-            components.forEach { comp ->
-                comp.collectPeripherals().forEach { (name, peripheral) -> bus.register(name, peripheral) }
-            }
-        }
-    }
-
-    private fun ensureComputer(ctx: DinRackEntity.ModuleContext): ServerComputer? {
-        computer?.let { return it }
-        val level = ctx.level as? ServerLevel ?: return null
-        // getOrCreate reads the id from the stack's data component, or allocates a new one and
-        // writes it back — so the id travels with the item when the module is later removed.
-        val id = NonNegativeId.getOrCreate(
-            level.server, ctx.stack, ModRegistry.DataComponents.COMPUTER_ID.get(), "computer"
+    override val behaviors: List<Behavior> by lazy {
+        listOf(
+            workDrawBehavior,
+            modemBehavior,
+            computerBehavior
         )
-        ctx.markChanged()
-        computerId = id
-        val props = ServerComputer.properties(id, ComputerFamily.ADVANCED)
-            .terminalSize(TerminalSize(TERM_WIDTH, TERM_HEIGHT))
-        return ServerComputer(level, ctx.pos, props).also { c ->
-            c.register()
-            computer = c
-            // Built-in controls (action light, reboot, id) available to the program as the `plc` peripheral.
-            c.setPeripheral(ComputerSide.BACK, PlcPeripheral(this))
-            // Connect the computer to the PLC bus; component peripherals are already advertised there.
-            ensureModemBus()?.attachTo(c, ComputerSide.BOTTOM)
-        }
-    }
-
-    // --- called from the computer thread via PlcPeripheral (actionLight is @Volatile) ---
-
-    internal fun luaSetActionLight(on: Boolean) {
-        actionLight = on
-    }
-
-    internal fun luaActionLight(): Boolean = actionLight
-
-    internal fun luaReboot() {
-        computer?.reboot()
-    }
-
-    override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
-        actionLight = tag.getBoolean("ActionLight")
-        persistedAction = actionLight
-        components.forEach { it.read(tag, registries, clientPacket) }
-    }
-
-    override fun write(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
-        if (actionLight) tag.putBoolean("ActionLight", true)
-        components.forEach { it.write(tag, registries, clientPacket) }
-    }
-
-    override fun writeSync(buffer: FriendlyByteBuf) {
-        buffer.writeByte(workState.ordinal or (if (actionLight) ACTION_BIT else 0))
-    }
-
-    override fun readSync(buffer: FriendlyByteBuf) {
-        val b = buffer.readByte().toInt()
-        workState = WorkState.entries[b and WORK_MASK]
-        actionLight = (b and ACTION_BIT) != 0
     }
 
     override fun render(
@@ -223,9 +79,9 @@ class DinRackPlcEntity: DinRackEntity, PlcBusModule {
         val buffer = CachedBuffers.partial(PartialModels.DIN_PLC, be)
         buffer.light<SuperByteBuffer>(light)
             .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
-        WORK_LIGHTS[workState]?.render(be, ms, bufferSource)
-        (if (actionLight) ACTION_LIGHT_ON else ACTION_LIGHT_OFF).render(be, ms, bufferSource)
-        components.forEach { it.render(be, en, partialTicks, ms, bufferSource, light, overlay) }
+        WORK_LIGHTS[computerBehavior.workState]?.render(be, ms, bufferSource)
+        (if (computerBehavior.actionLight) ACTION_LIGHT_ON else ACTION_LIGHT_OFF).render(be, ms, bufferSource)
+        behaviors.filterIsInstance<DinRackPlcComponent>().forEach { it.render(be, en, partialTicks, ms, bufferSource, light, overlay) }
     }
 
     override fun useItemOn(
@@ -242,8 +98,7 @@ class DinRackPlcEntity: DinRackEntity, PlcBusModule {
         }
 
         if (lv.isClientSide) return ItemInteractionResult.sidedSuccess(true)
-        val ctx = context ?: return ItemInteractionResult.FAIL
-        val computer = ensureComputer(ctx) ?: return ItemInteractionResult.FAIL
+        val computer = computerBehavior.ensureComputer() ?: return ItemInteractionResult.FAIL
         PlatformHelper.get().openMenu(
             player,
             Component.translatable("gui.computercraft.view_computer"),
@@ -256,12 +111,142 @@ class DinRackPlcEntity: DinRackEntity, PlcBusModule {
     }
 
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
-        Lang.builder().translate("goggles.plc").style(ChatFormatting.GRAY).forGoggles(tooltip)
-        Lang.builder().translate("goggles.state").style(ChatFormatting.GRAY)
-            .space().add(workState.text())
+        Lang.translate("goggles.plc").style(ChatFormatting.GRAY).forGoggles(tooltip)
+        Lang.translate("goggles.state").style(ChatFormatting.GRAY)
+            .space().add(computerBehavior.workState.text())
             .forGoggles(tooltip, 1)
-        components.forEach { it.addToGoggleTooltip(tooltip, isPlayerSneaking) }
+        behaviors.filterIsInstance<DinRackPlcComponent>().forEach { it.addToGoggleTooltip(tooltip, isPlayerSneaking) }
         return true
+    }
+
+    private class ComputerBehavior(
+        private val workDrawBehavior: WorkDrawBehavior,
+        private val modemBehavior: DigibusModemBehavior,
+    ): PowerGridBehavior {
+        /** Derived each server tick, synced to clients for the work light. */
+        var workState = WorkState.OFF
+            private set
+
+        /** Set from the computer thread via the `plc` peripheral; read on the server tick. */
+        @Volatile
+        var actionLight = false
+            private set
+        /** Last [actionLight] value persisted, to request a save only when it changes. */
+        private var persistedAction = false
+
+        /** Server-only live computer; created lazily from the persisted id, closed on detach. */
+        private var computer: ServerComputer? = null
+        private var context: Behavior.AttachContext? = null
+
+        /** Cached computer id (also stored on the item's data component); -1 until assigned. */
+        private var computerId = -1
+
+        override fun onAttach(ctx: Behavior.AttachContext) {
+            context = ctx
+        }
+
+        override fun onDetach() {
+            computer?.close()
+            computer = null
+            context = null
+        }
+
+        override fun electricalTick(): PowerGridBehavior.TickResult {
+            val computer = ensureComputer()
+            if (computer != null) {
+                // CC's registry ticks the computer; keepAlive stops it from timing out and unloading.
+                computer.keepAlive()
+                if (workDrawBehavior.powered && !computer.isOn) computer.turnOn()
+                else if (!workDrawBehavior.powered && computer.isOn) computer.shutdown()  // force shutdown on power loss
+            }
+
+            workState = when {
+                !workDrawBehavior.powered -> WorkState.OFF
+                computer == null || computer.isOn -> WorkState.ON
+                else -> WorkState.OFF
+            }
+
+            // Light state rides Power Grid's periodic node-state sync (~every 5 ticks) via the rack's
+            // sync appender, so only a persistent change needs a save here.
+            return if (actionLight != persistedAction) {
+                persistedAction = actionLight
+                PowerGridBehavior.TickResult.SAVE
+            } else {
+                PowerGridBehavior.TickResult.NONE
+            }
+        }
+
+        fun ensureComputer(): ServerComputer? {
+            computer?.let { return it }
+            val ctx = context ?: return null
+            val level = ctx.level as? ServerLevel ?: return null
+            // getOrCreate reads the id from the stack's data component, or allocates a new one and
+            // writes it back — so the id travels with the item when the module is later removed.
+            val id = NonNegativeId.getOrCreate(
+                level.server, ctx.stack, ModRegistry.DataComponents.COMPUTER_ID.get(), "computer"
+            )
+            ctx.markChanged()
+            computerId = id
+            val props = ServerComputer.properties(id, ComputerFamily.ADVANCED)
+                .terminalSize(TerminalSize(TERM_WIDTH, TERM_HEIGHT))
+            return ServerComputer(level, ctx.pos, props).also { c ->
+                c.register()
+                computer = c
+                // Built-in controls (action light, reboot, id) available to the program as the `plc` peripheral.
+                c.setPeripheral(ComputerSide.BACK, PlcPeripheral())
+                // Connect the computer to the PLC bus; component peripherals are already advertised there.
+                modemBehavior.attachTo(c, ComputerSide.BOTTOM, ctx)
+
+//                val sideStack = LinkedList(ComputerSide.entries).apply {
+//                    remove(ComputerSide.BACK)
+//                    remove(ComputerSide.BOTTOM)
+//                }
+//
+//
+            }
+        }
+
+        // --- called from the computer thread via PlcPeripheral (actionLight is @Volatile) ---
+
+        override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
+            actionLight = tag.getBoolean("ActionLight")
+            persistedAction = actionLight
+        }
+
+        override fun write(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
+            if (actionLight) tag.putBoolean("ActionLight", true)
+        }
+
+        override fun writeSync(buffer: FriendlyByteBuf) {
+            buffer.writeByte(workState.ordinal or (if (actionLight) ACTION_BIT else 0))
+        }
+
+        override fun readSync(buffer: FriendlyByteBuf) {
+            val b = buffer.readByte().toInt()
+            workState = WorkState.entries[b and WORK_MASK]
+            actionLight = (b and ACTION_BIT) != 0
+        }
+
+        inner class PlcPeripheral : IPeripheral {
+            override fun getType(): String = "plc"
+
+            /** Turn the action light on or off. */
+            @LuaFunction
+            fun setActionLight(on: Boolean) {
+                actionLight = on
+            }
+
+            @LuaFunction
+            fun getActionLight(): Boolean = actionLight
+
+            /** Reboot this controller's computer. */
+            @LuaFunction(mainThread = true)
+            fun reboot() {
+                computer?.reboot()
+            }
+
+            override fun equals(other: IPeripheral?): Boolean = other === this
+        }
     }
 
     private enum class WorkState {
@@ -275,8 +260,6 @@ class DinRackPlcEntity: DinRackEntity, PlcBusModule {
     }
 
     companion object {
-        /** Nominal bus voltage the configured current draw is sized against. */
-        private const val NOMINAL_VOLTAGE = 24.0
         private const val ACTION_BIT = 0x80
         private const val WORK_MASK = 0x7F
 

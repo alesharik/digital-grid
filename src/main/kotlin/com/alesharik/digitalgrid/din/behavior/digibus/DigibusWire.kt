@@ -1,4 +1,4 @@
-package com.alesharik.digitalgrid.din.item.plc
+package com.alesharik.digitalgrid.din.behavior.digibus
 
 import dan200.computercraft.api.network.wired.WiredNode
 import dan200.computercraft.api.peripheral.IPeripheral
@@ -17,7 +17,7 @@ import net.minecraft.world.phys.Vec3
  *
  * Server-side only.
  */
-class PlcBusConnector(private val rack: BlockEntity) {
+class DigibusWire(private val rack: BlockEntity) {
     private val element = object : WiredModemElement() {
         override fun getLevel(): Level = rack.level ?: error("PLC bus connector accessed a null level")
         override fun getPosition(): Vec3 = Vec3.atCenterOf(rack.blockPos)
@@ -34,12 +34,12 @@ class PlcBusConnector(private val rack: BlockEntity) {
     }
 
     /** Idempotent; CC ignores already-present connections. */
-    fun connectTo(other: PlcBusConnector) {
+    fun connectTo(other: DigibusWire) {
         node.connectTo(other.node)
     }
 
     /** Severs one link; CC ignores absent connections. */
-    fun disconnectFrom(other: PlcBusConnector) {
+    fun disconnectFrom(other: DigibusWire) {
         node.disconnectFrom(other.node)
     }
 

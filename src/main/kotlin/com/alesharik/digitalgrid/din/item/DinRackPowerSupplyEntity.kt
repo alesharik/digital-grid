@@ -4,6 +4,9 @@ import com.alesharik.digitalgrid.DigitalgridConfig
 import com.alesharik.digitalgrid.client.PartialModels
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
+import com.alesharik.digitalgrid.din.behavior.Behavior
+import com.alesharik.digitalgrid.din.behavior.powergrid.PowerGridBehavior
+import com.alesharik.digitalgrid.infra.unit.*
 import com.alesharik.digitalgrid.utils.Lang
 import com.alesharik.digitalgrid.utils.light.LightIndicator
 import com.mojang.blaze3d.vertex.PoseStack
@@ -27,91 +30,14 @@ import org.patryk3211.powergrid.electricity.sim.special.PNJunctionWire
 import org.patryk3211.powergrid.utility.Unit
 import thedarkcolour.kotlinforforge.neoforge.kotlin.enumMapOf
 import java.util.stream.Stream
-import kotlin.math.abs
 import kotlin.math.sqrt
 
 class DinRackPowerSupplyEntity: DinRackEntity {
     override val shape: VoxelShape = SHAPE
     override val terminalBoundingBox: Array<TerminalBoundingBox> = TERMINALS
     override val width: DINUnit = DINUnit(4)
-
-    private var coupling: TransformerCoupling? = null
-    private var diode: PNJunctionWire? = null
-    private var input0: FloatingNode? = null
-    private var input1: FloatingNode? = null
-    private var outMid: FloatingNode? = null
-    private var busPlus: FloatingNode? = null
-    private var busMinus: FloatingNode? = null
-    private var locked = true
-    private var foldback = 1.0
-
-    override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
-        val out = ctx.builder.addInternalNode()
-        // Secondary voltage = ratio * input voltage; ratio 0 keeps the output dead
-        // until the first tick measures the input.
-        coupling = ctx.builder.couple(
-            0f, TRANSFORMER_RESISTANCE,
-            ctx.terminalNode(0), ctx.terminalNode(1),
-            out, ctx.busMinus,
-        )
-        // Power Grid's 1N4007 diode model; blocks any back-feed from the bus.
-        val d = PNJunctionWire(5.47e-9, 0.075, 22.0, 1.783, out, ctx.bus24V)
-        ctx.builder.add(d)
-        diode = d
-        // Bleeder across the input. With the input wire detached, the transformer
-        // constraint would otherwise reflect a battery-held bus voltage onto the
-        // open primary (vin = Vbus / ratio ≈ the old input voltage), so the
-        // undervoltage lockout never engages and the state sticks at WORKING.
-        // The bleeder's current would have to return backwards through the output
-        // diode, so a reflected voltage collapses; a real source is unaffected.
-        ctx.builder.connect(BLEEDER_RESISTANCE, ctx.terminalNode(0), ctx.terminalNode(1))
-        input0 = ctx.terminalNode(0)
-        input1 = ctx.terminalNode(1)
-        outMid = out
-        busPlus = ctx.bus24V
-        busMinus = ctx.busMinus
-        locked = true
-        foldback = 1.0
-    }
-
-    override fun electricalTick(): DinRackEntity.TickResult {
-        val coupling = coupling ?: return DinRackEntity.TickResult.NONE
-        val vin = (input0?.voltage ?: return DinRackEntity.TickResult.NONE) -
-                (input1?.voltage ?: return DinRackEntity.TickResult.NONE)
-
-        // Undervoltage lockout with hysteresis: no output and no input draw.
-        // An unmeasurable input must lock too, or the ratio stays frozen at its
-        // last live value.
-        val minInput = DigitalgridConfig.PSU_MIN_INPUT_VOLTAGE.get()
-        locked = !vin.isFinite() || abs(vin) < if (locked) minInput else minInput * 0.9
-        if (locked) {
-            foldback = 1.0
-            coupling.setRatio(0f)
-            return DinRackEntity.TickResult.NONE
-        }
-
-        // Fold output voltage back when delivered power exceeds the configured
-        // limit; averaged with the previous tick to avoid oscillation.
-        var target = 1.0
-        val delivered = deliveredPower()
-        val maxPower = DigitalgridConfig.PSU_MAX_POWER.get()
-        if (delivered.isFinite() && delivered > maxPower) {
-            target = sqrt(maxPower / delivered)
-        }
-        foldback = (foldback + target) * 0.5
-
-        // Signed input keeps the output positive regardless of input polarity.
-        val ratio = (SETPOINT * foldback / vin).coerceIn(-MAX_RATIO, MAX_RATIO)
-        coupling.setRatio(ratio.toFloat())
-        return DinRackEntity.TickResult.NONE
-    }
-
-    private fun deliveredPower(): Double {
-        val d = diode ?: return 0.0
-        val plus = busPlus ?: return 0.0
-        val minus = busMinus ?: return 0.0
-        return d.current() * (plus.voltage - minus.voltage)
-    }
+    private val psuBehavior = PSUBehavior()
+    override val behaviors: List<Behavior> = listOf(psuBehavior)
 
     override fun render(
         be: BlockState,
@@ -133,8 +59,7 @@ class DinRackPowerSupplyEntity: DinRackEntity {
      * so a raised output means the supply is producing on both sides.
      */
     private fun state(): State {
-        val out = (outMid?.voltage ?: return State.NO_POWER) - (busMinus?.voltage ?: return State.NO_POWER)
-        return if (out.isFinite() && out >= SETPOINT * 0.5) {
+        return if (psuBehavior.working) {
             State.WORKING
         } else {
             State.NO_POWER
@@ -142,24 +67,124 @@ class DinRackPowerSupplyEntity: DinRackEntity {
     }
 
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
-        val coupling = coupling ?: return false
+        val current = psuBehavior.amps ?: return false
 
         Lang.builder().translate("goggles.power_supply").style(ChatFormatting.GRAY).forGoggles(tooltip)
         Lang.builder().translate("goggles.state").style(ChatFormatting.GRAY)
             .space().add(state().text())
             .forGoggles(tooltip, 1)
 
+        Lang.builder().translate("goggles.current").style(ChatFormatting.GRAY)
+            .space().add(Unit.CURRENT.formatWithPrefixes(current.value.toDouble()).style(ChatFormatting.AQUA))
+            .forGoggles(tooltip, 1)
+
+        return true
+    }
+
+    private class PSUBehavior: PowerGridBehavior {
+        private var coupling: TransformerCoupling? = null
+        private var diode: PNJunctionWire? = null
+        private var input0: FloatingNode? = null
+        private var input1: FloatingNode? = null
+        private var outMid: FloatingNode? = null
+        private var busPlus: FloatingNode? = null
+        private var busMinus: FloatingNode? = null
+        private var locked = true
+        private var foldback = 1.0
+
+        val working: Boolean
+            get() {
+                val out = (outMid?.voltage ?: return false) - (busMinus?.voltage ?: return false)
+                return out.isFinite() && out >= SETPOINT * 0.5
+            }
+
         // The coupling's state value is the secondary branch current (= diode
         // current, i.e. amps delivered to the bus); it rides Power Grid's node
         // state sync, so it is client-usable. Negative values are only diode
         // reverse leakage — clamp them away.
-        val current = coupling.stateValue
-        val amps = if (current.isFinite()) current.coerceAtLeast(0.0) else 0.0
-        Lang.builder().translate("goggles.current").style(ChatFormatting.GRAY)
-            .space().add(Unit.CURRENT.formatWithPrefixes(amps).style(ChatFormatting.AQUA))
-            .forGoggles(tooltip, 1)
+        val amps: Ampere?
+            get() = coupling?.stateValue?.coerceAtLeast(0.0)?.let(::Ampere)
 
-        return true
+        override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
+            val out = ctx.builder.addInternalNode()
+            // Secondary voltage = ratio * input voltage; ratio 0 keeps the output dead
+            // until the first tick measures the input.
+            coupling = ctx.builder.couple(
+                0f, TRANSFORMER_RESISTANCE,
+                ctx.terminalNode(0), ctx.terminalNode(1),
+                out, ctx.busMinus,
+            )
+            // Power Grid's 1N4007 diode model; blocks any back-feed from the bus.
+            val d = PNJunctionWire(5.47e-9, 0.075, 22.0, 1.783, out, ctx.bus24V)
+            ctx.builder.add(d)
+            diode = d
+            // Bleeder across the input. With the input wire detached, the transformer
+            // constraint would otherwise reflect a battery-held bus voltage onto the
+            // open primary (vin = Vbus / ratio ≈ the old input voltage), so the
+            // undervoltage lockout never engages and the state sticks at WORKING.
+            // The bleeder's current would have to return backwards through the output
+            // diode, so a reflected voltage collapses; a real source is unaffected.
+            ctx.builder.connect(BLEEDER_RESISTANCE, ctx.terminalNode(0), ctx.terminalNode(1))
+            input0 = ctx.terminalNode(0)
+            input1 = ctx.terminalNode(1)
+            outMid = out
+            busPlus = ctx.bus24V
+            busMinus = ctx.busMinus
+            locked = true
+            foldback = 1.0
+        }
+
+        override fun electricalTick(): PowerGridBehavior.TickResult {
+            val coupling = coupling ?: return PowerGridBehavior.TickResult.NONE
+            val vin = ((input0?.voltage ?: return PowerGridBehavior.TickResult.NONE) -
+                    (input1?.voltage ?: return PowerGridBehavior.TickResult.NONE)).volts
+
+            // Undervoltage lockout with hysteresis: no output and no input draw.
+            // An unmeasurable input must lock too, or the ratio stays frozen at its
+            // last live value.
+            val minInput = DigitalgridConfig.CONFIG.powerSupply.minInputVoltage
+            locked = vin.absoluteValue < if (locked) minInput else minInput * 0.9
+            if (locked) {
+                foldback = 1.0
+                coupling.setRatio(0f)
+                return PowerGridBehavior.TickResult.NONE
+            }
+
+            // Fold output voltage back when delivered power exceeds the configured
+            // limit; averaged with the previous tick to avoid oscillation.
+            var target = 1.0
+            val delivered = deliveredPower()
+            val maxPower = DigitalgridConfig.CONFIG.powerSupply.maxPower
+            if (delivered > maxPower) {
+                target = sqrt(maxPower / delivered)
+            }
+            foldback = (foldback + target) * 0.5
+
+            // Signed input keeps the output positive regardless of input polarity.
+            val ratio = (SETPOINT * foldback / vin.value).coerceIn(-MAX_RATIO, MAX_RATIO)
+            coupling.setRatio(ratio.toFloat())
+            return PowerGridBehavior.TickResult.NONE
+        }
+
+        private fun deliveredPower(): Watt {
+            val d = diode ?: return 0.0.watts
+            val plus = busPlus ?: return 0.0.watts
+            val minus = busMinus ?: return 0.0.watts
+            return d.current().amperes * (plus.voltage.volts - minus.voltage.volts)
+        }
+
+        companion object {
+            /** Pre-diode setpoint; the bus sees ~23.9-24.5V after the diode drop. */
+            private const val SETPOINT = 24.8
+            private const val TRANSFORMER_RESISTANCE = 0.1f
+            private const val MAX_RATIO = 50.0
+
+            /** Across the input terminals; keeps an open primary from floating up
+             * to the reflected bus voltage (see [buildCircuit]). 47kΩ collapses the
+             * reflection to <4V worst-case while drawing ~1W from a 240V input. */
+            private const val BLEEDER_RESISTANCE = 47_000f
+
+        }
     }
 
     private enum class State {
@@ -173,16 +198,6 @@ class DinRackPowerSupplyEntity: DinRackEntity {
     }
 
     companion object {
-        /** Pre-diode setpoint; the bus sees ~23.9-24.5V after the diode drop. */
-        private const val SETPOINT = 24.8
-        private const val TRANSFORMER_RESISTANCE = 0.1f
-        private const val MAX_RATIO = 50.0
-
-        /** Across the input terminals; keeps an open primary from floating up
-         * to the reflected bus voltage (see [buildCircuit]). 47kΩ collapses the
-         * reflection to <4V worst-case while drawing ~1W from a 240V input. */
-        private const val BLEEDER_RESISTANCE = 47_000f
-
         private val lights = enumMapOf(
             State.NO_POWER to LightIndicator.off(PartialModels.DIN_POWER_SUPPLY_LIGHT),
             State.WORKING to LightIndicator.green(PartialModels.DIN_POWER_SUPPLY_LIGHT)

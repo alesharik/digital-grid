@@ -1,5 +1,6 @@
 package com.alesharik.digitalgrid.din
 
+import com.alesharik.digitalgrid.din.behavior.Behavior
 import com.mojang.blaze3d.vertex.PoseStack
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.core.BlockPos
@@ -25,6 +26,8 @@ interface DinRackEntity {
     val terminalBoundingBox: Array<TerminalBoundingBox>
     val width: DINUnit
 
+    val behaviors: List<Behavior>
+
     fun render(
         be: BlockState,
         en: DinRackEntity,
@@ -49,8 +52,6 @@ interface DinRackEntity {
         hand: InteractionHand,
         hit: BlockHitResult
     ): ItemInteractionResult = ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
-
-    fun buildCircuit(ctx: CircuitContext) {}
 
     /**
      * Called by the rack when this module instance joins a placement — after creation and NBT

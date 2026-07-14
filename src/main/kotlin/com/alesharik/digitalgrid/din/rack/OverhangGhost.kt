@@ -1,7 +1,6 @@
 package com.alesharik.digitalgrid.din.rack
 
 import com.alesharik.digitalgrid.din.DinRackEntity
-import com.alesharik.digitalgrid.din.item.DinRackItem
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.resources.ResourceLocation

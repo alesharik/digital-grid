@@ -7,6 +7,7 @@ import com.alesharik.digitalgrid.din.item.plc.DinRackPlcEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer
+import com.alesharik.digitalgrid.din.rack.DinRackItem
 import dan200.computercraft.shared.util.NonNegativeId
 import net.minecraft.core.component.DataComponentType
 import net.minecraft.core.registries.BuiltInRegistries
@@ -64,16 +65,42 @@ object DigitalgridRegistry {
         internal val ITEMS: DeferredRegister.Items = DeferredRegister.createItems(Digitalgrid.ID)
 
         val DIN_RACK by ITEMS.register("din_rack", { -> BlockItem(Blocks.DIN_RACK, Item.Properties()) })
-        val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { -> DinRackItem(Item.Properties(), DinRackPatchEntity::class.java) })
-        val DIN_RACK_BATTERY by ITEMS.register("din_rack_battery", { -> DinRackItem(Item.Properties(), DinRackBatteryEntity::class.java) })
-        val DIN_RACK_POWER_SUPPLY by ITEMS.register("din_rack_power_supply", { -> DinRackItem(Item.Properties(),
-            DinRackPowerSupplyEntity::class.java) })
-        val DIN_RACK_PLC by ITEMS.register("din_rack_plc", { -> DinRackItem(Item.Properties(),
-            DinRackPlcEntity::class.java) })
-        val DIN_RACK_PLC_IO by ITEMS.register("din_rack_plc_io", { -> DinRackItem(Item.Properties(),
-            DinRackPlcIOEntity::class.java) })
-        val DIN_RACK_PLC_RELAY by ITEMS.register("din_rack_plc_relay", { -> DinRackItem(Item.Properties(),
-            DinRackPlcRelayEntity::class.java) })
+        val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackPatchEntity::class.java
+            )
+        })
+        val DIN_RACK_BATTERY by ITEMS.register("din_rack_battery", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackBatteryEntity::class.java
+            )
+        })
+        val DIN_RACK_POWER_SUPPLY by ITEMS.register("din_rack_power_supply", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackPowerSupplyEntity::class.java
+            )
+        })
+        val DIN_RACK_PLC by ITEMS.register("din_rack_plc", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackPlcEntity::class.java
+            )
+        })
+        val DIN_RACK_PLC_IO by ITEMS.register("din_rack_plc_io", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackPlcIOEntity::class.java
+            )
+        })
+        val DIN_RACK_PLC_RELAY by ITEMS.register("din_rack_plc_relay", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackPlcRelayEntity::class.java
+            )
+        })
         val PLC_PROGRAMMER by ITEMS.register("plc_programmer", { -> Item(Item.Properties()) })
 
         val PLASTIC by ITEMS.register("plastic", { -> Item(Item.Properties()) })

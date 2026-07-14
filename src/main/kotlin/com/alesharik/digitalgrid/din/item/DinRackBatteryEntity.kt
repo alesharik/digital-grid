@@ -4,6 +4,9 @@ import com.alesharik.digitalgrid.DigitalgridConfig
 import com.alesharik.digitalgrid.client.PartialModels
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
+import com.alesharik.digitalgrid.din.behavior.Behavior
+import com.alesharik.digitalgrid.din.behavior.powergrid.BatteryBehavior
+import com.alesharik.digitalgrid.infra.unit.watts
 import com.alesharik.digitalgrid.utils.Lang
 import com.alesharik.digitalgrid.utils.light.Blinker
 import com.alesharik.digitalgrid.utils.light.LightIndicator
@@ -14,9 +17,6 @@ import net.createmod.catnip.render.CachedBuffers
 import net.createmod.catnip.render.SuperByteBuffer
 import net.minecraft.ChatFormatting
 import net.minecraft.client.renderer.MultiBufferSource
-import net.minecraft.core.HolderLookup
-import net.minecraft.nbt.CompoundTag
-import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.Component
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
@@ -24,11 +24,9 @@ import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
-import org.patryk3211.powergrid.electricity.sim.node.VoltageSourceCoupling
 import org.patryk3211.powergrid.utility.Unit
 import thedarkcolour.kotlinforforge.neoforge.kotlin.enumMapOf
 import java.util.stream.Stream
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 class DinRackBatteryEntity: DinRackEntity {
@@ -36,88 +34,52 @@ class DinRackBatteryEntity: DinRackEntity {
     override val terminalBoundingBox: Array<TerminalBoundingBox> = emptyArray()
     override val width: DINUnit = DINUnit(4)
 
-    private var coupling: VoltageSourceCoupling? = null
-    private var energy = 0.0
-
-    private val capacity: Double
-        get() = DigitalgridConfig.BATTERY_CAPACITY_WH.get() * 3600.0
-
-    override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
-        val source = VoltageSourceCoupling(ctx.bus24V, ctx.busMinus, INTERNAL_RESISTANCE)
-        ctx.builder.add(source)
-        coupling = source
-        updateParameters(source)
+    private val batteryBehavior by lazy {
+        BatteryBehavior(
+            capacity = DigitalgridConfig.CONFIG.battery.capacity.joules,
+            emfEmpty = DigitalgridConfig.CONFIG.battery.emfEmpty,
+            emfSpan = DigitalgridConfig.CONFIG.battery.emfSpan,
+            internalResistance = DigitalgridConfig.CONFIG.battery.internalResistance,
+            depletedResistance = DigitalgridConfig.CONFIG.battery.depletedResistance,
+        )
     }
 
-    override fun electricalTick(): DinRackEntity.TickResult {
-        val source = coupling ?: return DinRackEntity.TickResult.NONE
-        // Sign convention as in Power Grid's battery: positive power discharges.
-        val power = -source.current * source.voltage
-        if (!power.isFinite()) return DinRackEntity.TickResult.NONE
-        energy = (energy - power * 0.05).coerceIn(0.0, capacity)
-        updateParameters(source)
-        // Clients receive energy through the rack's sync appender (rides Power
-        // Grid's periodic node state sync), so no explicit block entity sync here.
-        return if (abs(power) > 0.05) DinRackEntity.TickResult.SAVE else DinRackEntity.TickResult.NONE
+    override val behaviors: List<Behavior> by lazy {
+        listOf(
+            batteryBehavior
+        )
     }
 
     private fun state(): State? {
-        val source = coupling ?: return null
-        val power = -source.current * source.voltage
-        if (!power.isFinite()) return null
+        val power = batteryBehavior.power ?: return null
+        val energy = batteryBehavior.energy
         return when {
             energy <= 0.0 -> State.EMPTY
-            power < -0.05 -> State.CHARGING
-            energy < capacity * LOW_CHARGE_LEVEL -> State.LOW
-            power > 0.05 -> State.DISCHARGING
+            power < (-0.05).watts -> State.CHARGING
+            energy < batteryBehavior.capacity * LOW_CHARGE_LEVEL -> State.LOW
+            power > 0.05.watts -> State.DISCHARGING
             else -> State.CHARGED
         }
     }
 
-    private fun updateParameters(source: VoltageSourceCoupling) {
-        val chargeLevel = (energy / capacity).coerceIn(0.0, 1.0)
-        source.setVoltage(EMF_EMPTY + EMF_SPAN * chargeLevel)
-        // An empty battery must not source power, but has to stay revivable:
-        // block only the discharge direction and reopen as soon as current reverses.
-        val discharging = -source.current * source.voltage > 0
-        source.setResistance(if (energy <= 0.0 && discharging) DEPLETED_RESISTANCE else INTERNAL_RESISTANCE)
-    }
-
-    override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
-        energy = tag.getDouble("Energy").coerceIn(0.0, capacity)
-        coupling?.let { updateParameters(it) }
-    }
-
-    override fun write(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
-        tag.putDouble("Energy", energy)
-    }
-
-    override fun writeSync(buffer: FriendlyByteBuf) {
-        buffer.writeFloat(energy.toFloat())
-    }
-
-    override fun readSync(buffer: FriendlyByteBuf) {
-        energy = buffer.readFloat().toDouble().coerceIn(0.0, capacity)
-    }
-
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
-        val source = coupling ?: return false
         val state = state() ?: return false
+        val voltage = batteryBehavior.voltage ?: return false
 
-        Lang.builder().translate("goggles.battery").style(ChatFormatting.GRAY).forGoggles(tooltip)
-        Lang.builder().translate("goggles.state").style(ChatFormatting.GRAY)
+        Lang.translate("goggles.battery").style(ChatFormatting.GRAY).forGoggles(tooltip)
+        Lang.translate("goggles.state").style(ChatFormatting.GRAY)
             .space().add(state.text())
             .forGoggles(tooltip, 1)
 
-        val voltage = source.positive.voltage - (source.negative?.voltage ?: 0.0)
-        Lang.builder().translate("goggles.voltage").style(ChatFormatting.GRAY)
-            .space().add(Lang.builder().text(String.format("%.1f", voltage)).space().add(Unit.VOLTAGE.get()).style(ChatFormatting.AQUA))
+        Lang.translate("goggles.voltage").style(ChatFormatting.GRAY)
+            .space().add(Lang.text(String.format("%.1f", voltage.value)).space().add(Unit.VOLTAGE.get()).style(ChatFormatting.AQUA))
             .forGoggles(tooltip, 1)
 
-        val percent = (energy / capacity * 100.0).roundToInt()
-        Lang.builder().translate("goggles.charge").style(ChatFormatting.GRAY)
-            .space().add(Lang.builder().text("$percent%").style(ChatFormatting.AQUA))
+        val percent = (batteryBehavior.energy / batteryBehavior.capacity * 100.0).roundToInt()
+        Lang.translate("goggles.charge").style(ChatFormatting.GRAY)
+            .space().add(Lang.text("$percent%").style(ChatFormatting.AQUA))
             .forGoggles(tooltip, 1)
+
         return true
     }
 
@@ -154,12 +116,6 @@ class DinRackBatteryEntity: DinRackEntity {
     }
 
     companion object {
-        /** EMF is 20V empty .. 24V full — full charge sits just under the PSU bus
-         * setpoint so float charge tapers off instead of overcharging. */
-        private const val EMF_EMPTY = 20.0
-        private const val EMF_SPAN = 4.0
-        private const val INTERNAL_RESISTANCE = 0.5f
-        private const val DEPLETED_RESISTANCE = 10_000f
         private const val LOW_CHARGE_LEVEL = 0.2
 
         private val lights = enumMapOf(

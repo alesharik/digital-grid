@@ -2,7 +2,6 @@ package com.alesharik.digitalgrid.din.rack
 
 import com.alesharik.digitalgrid.DigitalgridRegistry
 import com.alesharik.digitalgrid.din.DINUnit
-import com.alesharik.digitalgrid.din.item.DinRackItem
 import com.simibubi.create.foundation.block.IBE
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction

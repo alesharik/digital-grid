@@ -3,6 +3,8 @@ package com.alesharik.digitalgrid.din.item
 import com.alesharik.digitalgrid.client.PartialModels
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
+import com.alesharik.digitalgrid.din.behavior.Behavior
+import com.alesharik.digitalgrid.din.behavior.powergrid.WireBehavior
 import com.mojang.blaze3d.vertex.PoseStack
 import com.simibubi.create.foundation.render.RenderTypes
 import net.createmod.catnip.render.CachedBuffers
@@ -21,6 +23,7 @@ class DinRackPatchEntity: DinRackEntity {
     override val shape: VoxelShape = SHAPE
     override val terminalBoundingBox: Array<TerminalBoundingBox> = TERMINALS
     override val width: DINUnit = DINUnit(1)
+    override val behaviors: List<Behavior> = listOf(BEHAVIOR)
 
     override fun render(
         be: BlockState,
@@ -36,13 +39,9 @@ class DinRackPatchEntity: DinRackEntity {
             .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
     }
 
-    override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
-        val a = ctx.terminalNode(0)
-        val b = ctx.terminalNode(1)
-        ctx.builder.connect(0.1f, a, b)
-    }
-
     companion object {
+        private val BEHAVIOR = WireBehavior(0, 1)
+
         private val SHAPE = Stream.of(
             Block.box(0.0, 3.0, 14.0, 1.0, 8.0, 15.0),
             Block.box(0.0, 10.0, 14.0, 1.0, 15.0, 15.0),

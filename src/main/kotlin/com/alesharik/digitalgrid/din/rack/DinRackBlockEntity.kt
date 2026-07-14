@@ -4,9 +4,10 @@ import com.alesharik.digitalgrid.Digitalgrid
 import com.alesharik.digitalgrid.DigitalgridRegistry.BlockEntities
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
-import com.alesharik.digitalgrid.din.item.DinRackItem
-import com.alesharik.digitalgrid.din.item.plc.PlcBusConnector
-import com.alesharik.digitalgrid.din.item.plc.PlcBusModule
+import com.alesharik.digitalgrid.din.behavior.Behavior
+import com.alesharik.digitalgrid.din.behavior.digibus.DigibusBehavior
+import com.alesharik.digitalgrid.din.behavior.digibus.DigibusWire
+import com.alesharik.digitalgrid.din.behavior.powergrid.PowerGridBehavior
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
 import com.alesharik.digitalgrid.utils.voxel.rotationYDegreesInv
 import com.simibubi.create.api.equipment.goggles.IHaveGoggleInformation
@@ -20,6 +21,7 @@ import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.Tag
 import net.minecraft.network.FriendlyByteBuf
 import net.minecraft.network.chat.Component
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
@@ -266,28 +268,40 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
             val a = sorted[i]
             val b = sorted[i + 1]
             if (a.u.value + a.entity.width.value != b.u.value) continue
-            val connA = (a.entity as? PlcBusModule)?.busConnector() ?: continue
-            val connB = (b.entity as? PlcBusModule)?.busConnector() ?: continue
-            connA.connectTo(connB)
+            val aWires = a.entity.behaviors.filterIsInstance<DigibusBehavior>()
+                .map { it.getWire(DigibusContextImpl(a.stack)) }
+            val bWires = b.entity.behaviors.filterIsInstance<DigibusBehavior>()
+                .map { it.getWire(DigibusContextImpl(b.stack)) }
+            aWires.forEach { q -> bWires.forEach { e -> q.connectTo(e) } }
         }
         // Cross-rack: our edge module touching the +u neighbor's edge module.
         val neighbor = neighborRack(plusU) ?: return
         if (!neighbor.bridgeable || neighbor.isRemoved) return
-        plcSeamPair(neighbor)?.let { (a, b) -> a.connectTo(b) }
+        plcSeamPair(neighbor).forEach { (a, b) -> a.connectTo(b) }
     }
 
     /** The touching PLC bus connector pair across this rack's +u seam into [neighbor], if any. */
-    private fun plcSeamPair(neighbor: DinRackBlockEntity): Pair<PlcBusConnector, PlcBusConnector>? {
-        val last = entities.maxByOrNull { it.u.value } ?: return null
+    private fun plcSeamPair(neighbor: DinRackBlockEntity): List<Pair<DigibusWire, DigibusWire>> {
+        val last = entities.maxByOrNull { it.u.value } ?: return emptyList()
         // contact == 0: module ends flush at the seam; > 0: it overhangs and its far edge
         // sits at the neighbor's local unit `contact`.
         val contact = last.u.value + last.entity.width.value - RACK_WIDTH
-        if (contact < 0) return null
-        val connLast = (last.entity as? PlcBusModule)?.busConnector() ?: return null
-        val neighborFirst = neighbor.entities.minByOrNull { it.u.value } ?: return null
-        if (neighborFirst.u.value != contact) return null
-        val connFirst = (neighborFirst.entity as? PlcBusModule)?.busConnector() ?: return null
-        return connLast to connFirst
+        if (contact < 0) return emptyList()
+        val neighborFirst = neighbor.entities.minByOrNull { it.u.value } ?: return emptyList()
+        if (neighborFirst.u.value != contact) return emptyList()
+
+        val lastWires = last.entity.behaviors.filterIsInstance<DigibusBehavior>()
+            .map { it.getWire(DigibusContextImpl(last.stack)) }
+        val neighWires = neighborFirst.entity.behaviors.filterIsInstance<DigibusBehavior>()
+            .map { it.getWire(DigibusContextImpl(last.stack)) }
+
+        return buildList {
+            for (a in lastWires) {
+                for (b in neighWires) {
+                    add(Pair(a, b))
+                }
+            }
+        }
     }
 
     /**
@@ -297,8 +311,8 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
      */
     private fun disconnectPlcSeamLinks() {
         if (level?.isClientSide != false) return
-        neighborRack(plusU)?.let { neighbor -> plcSeamPair(neighbor)?.let { (a, b) -> a.disconnectFrom(b) } }
-        neighborRack(plusU.opposite)?.let { minus -> minus.plcSeamPair(this)?.let { (a, b) -> a.disconnectFrom(b) } }
+        neighborRack(plusU)?.let { neighbor -> plcSeamPair(neighbor).forEach { (a, b) -> a.disconnectFrom(b) } }
+        neighborRack(plusU.opposite)?.let { minus -> minus.plcSeamPair(this).forEach { (a, b) -> a.disconnectFrom(b) } }
     }
 
     /**
@@ -413,6 +427,8 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
 
     /** Hands a module its [DinRackEntity.ModuleContext] so it can reach the world and its backing stack. */
     private fun attachModule(placement: DinRackEntityPlacement) {
+        val ctx = AttachContextImpl(placement.stack)
+        placement.entity.behaviors.forEach { it.onAttach(ctx) }
         placement.entity.onAttach(ModuleContextImpl(placement.stack))
     }
 
@@ -444,6 +460,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val placement = moduleAt(u) ?: return null
         val oldTerminals = globalTerminalMap(entities, overhang)
         if (mEntities?.remove(placement) != true) return null
+        placement.entity.behaviors.forEach { it.onDetach() }
         placement.entity.onDetach()
         remapConnections(oldTerminals)
         if (placement.u.value + placement.entity.width.value > RACK_WIDTH) {
@@ -513,7 +530,10 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         // here (e.g. close a PLC's ServerComputer, so it can't linger and get duplicated on a fast
         // reload). onDetach() is idempotent, so the extra call on a genuine block break is harmless.
         super.invalidate()
-        mEntities?.forEach { it.entity.onDetach() }
+        mEntities?.forEach {
+            it.entity.behaviors.forEach { it.onDetach() }
+            it.entity.onDetach()
+        }
     }
 
     /**
@@ -601,13 +621,15 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val busMinus = cb.terminalNode(exposed + 1)
         var off = 0
         for (en in entities) {
-            en.entity.buildCircuit(CircuitContextImpl(
+            val ctx = CircuitContextImpl(
                 off = off,
                 terminalCount = en.entity.terminalBoundingBox.size,
                 builder = cb,
                 bus24V = busPlus,
                 busMinus = busMinus,
-            ))
+            )
+            en.entity.behaviors.filterIsInstance<PowerGridBehavior>()
+                .forEach { it.buildCircuit(ctx) }
             off += en.entity.terminalBoundingBox.size
         }
     }
@@ -618,11 +640,17 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         // stay identical on both sides (same NBT order), keeping payloads aligned.
         electricBehaviour.setSyncAppender(object : ElectricBehaviour.SyncAppender {
             override fun writeToSync(buffer: FriendlyByteBuf) {
-                entities.forEach { it.entity.writeSync(buffer) }
+                entities.forEach {
+                    it.entity.behaviors.filterIsInstance<PowerGridBehavior>().forEach { e -> e.writeSync(buffer) }
+                    it.entity.writeSync(buffer)
+                }
             }
 
             override fun readFromSync(buffer: FriendlyByteBuf) {
-                entities.forEach { it.entity.readSync(buffer) }
+                entities.forEach {
+                    it.entity.behaviors.filterIsInstance<PowerGridBehavior>().forEach { e -> e.readSync(buffer) }
+                    it.entity.readSync(buffer)
+                }
             }
         })
     }
@@ -631,6 +659,13 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         var save = false
         var sync = false
         for (placed in entities) {
+            placed.entity.behaviors.filterIsInstance<PowerGridBehavior>().forEach { e ->
+                when (e.electricalTick()) {
+                    PowerGridBehavior.TickResult.SAVE -> save = true
+                    PowerGridBehavior.TickResult.SAVE_AND_SYNC -> { save = true; sync = true }
+                    PowerGridBehavior.TickResult.NONE -> {}
+                }
+            }
             when (placed.entity.electricalTick()) {
                 DinRackEntity.TickResult.SAVE -> save = true
                 DinRackEntity.TickResult.SAVE_AND_SYNC -> { save = true; sync = true }
@@ -657,7 +692,10 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
         // Modules must be parsed before super.read: ElectricBehaviour.read rebuilds the
         // circuit on the client (its "Rebuild" sync flag) and must see the new module list.
-        mEntities?.forEach { it.entity.onDetach() }
+        mEntities?.forEach {
+            it.entity.behaviors.forEach { it.onDetach() }
+            it.entity.onDetach()
+        }
         overhang = if (tag.contains("Overhang", Tag.TAG_COMPOUND.toInt())) {
             OverhangGhost.read(tag.getCompound("Overhang")).also {
                 if (it == null) Digitalgrid.LOGGER.warn("Dropping DIN rack overhang at {}: unparseable tag", worldPosition)
@@ -695,7 +733,12 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
             }
             val entity = item.createEntity()
             if (entry.contains("Data", Tag.TAG_COMPOUND.toInt())) {
-                entity.read(entry.getCompound("Data"), registries, clientPacket)
+                val cmp = entry.getCompound("Data")
+                entity.behaviors.forEachIndexed { idx, behaviour ->
+                    val dat = cmp.getCompound("C$idx")
+                    behaviour.read(dat, registries, clientPacket)
+                }
+                entity.read(cmp, registries, clientPacket)
             }
             val u = DINUnit(entry.getInt("U"))
             if (!canStore(rebuilt, overhang, u, entity.width)) {
@@ -716,6 +759,11 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
             entry.putInt("U", placed.u.value)
             entry.put("Item", placed.stack.save(registries))
             val data = CompoundTag()
+            placed.entity.behaviors.forEachIndexed { idx, behaviour ->
+                val entry = CompoundTag()
+                behaviour.write(entry, registries, clientPacket)
+                entry.put("C$idx", entry)
+            }
             placed.entity.write(data, registries, clientPacket)
             if (!data.isEmpty) entry.put("Data", data)
             list.add(entry)
@@ -759,6 +807,30 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         override fun markChanged() = setChanged()
 
         override fun requestSync() = sendData()
+    }
+
+    private inner class AttachContextImpl(override val stack: ItemStack) : Behavior.AttachContext {
+        override val level: Level
+            get() = this@DinRackBlockEntity.level ?: error("DIN rack module accessed a null level")
+        override val pos: BlockPos
+            get() = worldPosition
+        override val blockEntity: BlockEntity
+            get() = this@DinRackBlockEntity
+
+        override fun markChanged() = setChanged()
+
+        override fun requestSync() = sendData()
+    }
+
+    private inner class DigibusContextImpl(override val item: ItemStack): DigibusBehavior.DigibusWireContext {
+        override val level: ServerLevel
+            get() = (this@DinRackBlockEntity.level as? ServerLevel) ?: error("DIN rack module accessed a null level")
+        override val blockEntity: BlockEntity
+            get() = this@DinRackBlockEntity
+
+        override fun markChanged() {
+            setChanged()
+        }
     }
 
     /** Module-space terminal id, stable while the module stays installed. */
