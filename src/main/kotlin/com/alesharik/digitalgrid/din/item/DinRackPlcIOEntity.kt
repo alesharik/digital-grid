@@ -78,7 +78,7 @@ class DinRackPlcIOEntity: DinRackEntity {
             .space().add(Lang.text(digibusPeripheralBehavior.peripheralName).style(ChatFormatting.AQUA))
             .forGoggles(tooltip, 1)
         for ((i, pin) in ioBehaviors.withIndex()) {
-            val v = pin.measured
+            val v = pin.voltage ?: Volt(0.0)
             val line = Lang.builder().translate("goggles.plc_io.pin", i + 1).style(ChatFormatting.GRAY)
                 .space().add(Unit.VOLTAGE.formatWithPrefixes(v.value.toDouble()).style(ChatFormatting.AQUA))
             if (pin.driven) {
@@ -97,7 +97,7 @@ class DinRackPlcIOEntity: DinRackEntity {
         @LuaFunction
         fun getVoltage(pin: Int): Float = luaImpl {
             ensurePowered()
-            io.ioBehaviors[checkPin(pin)].measured.value
+            io.ioBehaviors[checkPin(pin)].voltage?.value ?: 0.0f
         }
 
         /** Drive the pin to [volts], converted from the rack's 24V rail. Reading still works. */

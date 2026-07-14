@@ -4,7 +4,6 @@ import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.infra.unit.Ohm
 import com.alesharik.digitalgrid.infra.unit.Volt
 import com.alesharik.digitalgrid.infra.unit.ohms
-import com.alesharik.digitalgrid.infra.unit.volts
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
@@ -26,10 +25,6 @@ class IONodeBehavior(
     @Volatile private var target: Volt = Volt(0.0)
     @Volatile private var persisted = false
 
-    /** Last measured pin voltage vs GND, cached each tick for the computer thread. */
-    @Volatile var measured: Volt = Volt(0.0)
-        private set
-
     private var coupling: TransformerCoupling? = null
     private var switch: SwitchedWire? = null
     private var node: FloatingNode? = null
@@ -39,6 +34,14 @@ class IONodeBehavior(
             val plus = (bus24V ?: return null).voltage
             val minus = (busMinus ?: return null).voltage
             return Volt(plus - minus)
+        }
+
+    /** Pin voltage vs GND computed live from node states — valid on the client too, where Power Grid syncs node voltages. */
+    val voltage: Volt?
+        get() {
+            val minus = (busMinus ?: return null).voltage
+            val v = (node ?: return null).voltage - minus
+            return Volt(if (v.isFinite()) v else 0.0)
         }
 
     fun setVoltage(volt: Volt) {
@@ -68,12 +71,7 @@ class IONodeBehavior(
     }
 
     override fun electricalTick(): PowerGridBehavior.TickResult {
-        val busMinus = busMinus ?: return PowerGridBehavior.TickResult.NONE
-        val node = node ?: return PowerGridBehavior.TickResult.NONE
         val railVoltage = railVoltage ?: return PowerGridBehavior.TickResult.NONE
-        val v = node.voltage - busMinus.voltage
-        measured = (if (v.isFinite()) v else 0.0).volts
-
         switch?.let { if (it.state != driven) it.state = driven }
         // Signed rail voltage keeps the output at +target regardless of rail polarity.
         val ratio = if (driven) (target / railVoltage).coerceIn(-maxRatio, maxRatio) else 0.0
