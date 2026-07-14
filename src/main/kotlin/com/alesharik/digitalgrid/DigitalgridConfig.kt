@@ -23,7 +23,7 @@ object DigitalgridConfig {
             battery = block("battery") {
                 Config.Battery(
                     capacitySpec = comment("DIN battery module capacity in watt-hours")
-                        .defineInRange("capacityWh", 50.0, 1.0, 1_000_000.0),
+                        .defineInRange("capacityWh", 5.0, 0.1, 1_000_000.0),
                     emfEmptySpec = comment("Minimal battery voltage")
                         .defineInRange("emfEmpty", 20.0, 1.0, 60.0),
                     emfSpanSpec = comment("Battery voltage threshold (max = min + span)")
@@ -31,7 +31,7 @@ object DigitalgridConfig {
                     internalResistanceSpec = comment("Internal battery resistance")
                         .defineInRange("internalResistance", 0.5, 0.1, 1_000.0),
                     depletedResistanceSpec = comment("Battery resistance when depleted")
-                        .defineInRange("internalResistance", 10_000.0, 5_000.0, 100_000.0)
+                        .defineInRange("depletedResistance", 10_000.0, 5_000.0, 100_000.0)
                 )
             },
             powerSupply = block("powerSupply") {
@@ -185,7 +185,7 @@ object DigitalgridConfig {
             /**
              * PLC relay coil current draw from the internal 24V bus, in amperes (at nominal voltage)
              */
-            val coilCurrent by currentDrawSpec.asVar(::Ampere)
+            val coilCurrent by coilCurrentSpec.asVar(::Ampere)
 
             /**
              * Minimum voltage for coil to work
