@@ -43,11 +43,12 @@ class DinRackPlcIOEntity: DinRackEntity {
     private val ioBehaviors = Array(PIN_COUNT) {
         IONodeBehavior(PIN_TERMINALS[it])
     }
+    private val digibusPeripheralBehavior by lazy { DigibusPeripheralBehavior(PlcIOPeripheral(this)) }
 
     override val behaviors: List<Behavior> by lazy {
         arrayListOf(
             workDrawBehavior,
-            DigibusPeripheralBehavior(PlcIOPeripheral(this))
+            digibusPeripheralBehavior
         ) + ioBehaviors + COMMON_TERMINALS.map { BusGroundWireBehavior(it) }
     }
 
@@ -72,7 +73,10 @@ class DinRackPlcIOEntity: DinRackEntity {
 
     /** Client-side: pin voltages are computed from Power Grid's synced node states. */
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
-        Lang.builder().translate("goggles.plc_io").style(ChatFormatting.GRAY).forGoggles(tooltip)
+        Lang.translate("goggles.plc_io").style(ChatFormatting.GRAY).forGoggles(tooltip)
+        Lang.translate("goggles.digibus.name").style(ChatFormatting.GRAY)
+            .space().add(Lang.text(digibusPeripheralBehavior.peripheralName).style(ChatFormatting.AQUA))
+            .forGoggles(tooltip, 1)
         for ((i, pin) in ioBehaviors.withIndex()) {
             val v = pin.measured
             val line = Lang.builder().translate("goggles.plc_io.pin", i + 1).style(ChatFormatting.GRAY)

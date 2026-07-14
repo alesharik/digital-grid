@@ -6,6 +6,7 @@ import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.behavior.Behavior
 import com.alesharik.digitalgrid.din.behavior.digibus.DigibusBehavior
+import com.alesharik.digitalgrid.din.behavior.digibus.DigibusPeripheralBehavior
 import com.alesharik.digitalgrid.din.behavior.digibus.DigibusWire
 import com.alesharik.digitalgrid.din.behavior.powergrid.PowerGridBehavior
 import com.alesharik.digitalgrid.utils.voxel.DirectionalVoxelShape
@@ -253,6 +254,99 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     }
 
     /**
+     * Assigns stable, bus-local IDs to every [DigibusPeripheralBehavior] in the row so each
+     * peripheral advertises a unique name on the CC network. Must run before the wire-linking
+     * loops in [refreshPlcBusLinks] so newly created wires carry the correct name from the start.
+     *
+     * Walks the contiguous row, splits it into digibus chains (runs of touching bus modules),
+     * and for each type within a chain assigns the smallest non-negative id not already owned
+     * by another behavior — using a two-pass claim-then-assign strategy so existing ids are
+     * never stolen from their owner.
+     */
+    private fun ensureDigibusIds() {
+        // Walk to the leftmost (-u) rack in the row.
+        val visitedLeft = HashSet<BlockPos>()
+        var leftmost: DinRackBlockEntity = this
+        visitedLeft.add(leftmost.worldPosition)
+        while (true) {
+            val prev = leftmost.neighborRack(leftmost.plusU.opposite) ?: break
+            if (!visitedLeft.add(prev.worldPosition)) break
+            leftmost = prev
+        }
+        // Walk +u collecting racks in order.
+        val row = ArrayList<DinRackBlockEntity>()
+        val visitedRight = HashSet<BlockPos>()
+        var rowCursor: DinRackBlockEntity? = leftmost
+        while (rowCursor != null && visitedRight.add(rowCursor.worldPosition)) {
+            row.add(rowCursor)
+            rowCursor = rowCursor.neighborRack(rowCursor.plusU)
+        }
+
+        // Collect all (absU, placement, owningRack) triples sorted by absU.
+        data class AbsPlacement(val absU: Int, val placement: DinRackEntityPlacement, val rack: DinRackBlockEntity)
+        val all = ArrayList<AbsPlacement>()
+        for ((rackIdx, rack) in row.withIndex()) {
+            for (placement in rack.entities) {
+                all.add(AbsPlacement(rackIdx * RACK_WIDTH + placement.u.value, placement, rack))
+            }
+        }
+        all.sortBy { it.absU }
+
+        // Split into digibus chains: maximal runs of bus modules touching end-to-end.
+        val chains = ArrayList<List<AbsPlacement>>()
+        var chain = ArrayList<AbsPlacement>()
+        for (ap in all) {
+            if (!ap.placement.entity.behaviors.any { it is DigibusBehavior }) continue
+            if (chain.isNotEmpty()) {
+                val prev = chain.last()
+                if (prev.absU + prev.placement.entity.width.value != ap.absU) {
+                    chains.add(chain)
+                    chain = ArrayList()
+                }
+            }
+            chain.add(ap)
+        }
+        if (chain.isNotEmpty()) chains.add(chain)
+
+        val changedRacks = HashSet<DinRackBlockEntity>()
+        for (c in chains) {
+            val peripherals = c.flatMap { ap ->
+                ap.placement.entity.behaviors
+                    .filterIsInstance<DigibusPeripheralBehavior>()
+                    .map { ap.rack to it }
+            }
+            val byType = peripherals.groupBy { (_, b) -> b.type }
+            for ((_, group) in byType) {
+                val claimed = HashSet<Int>()
+                val keepers = HashSet<DigibusPeripheralBehavior>()
+                // Claim pass: first occurrence of each id wins and keeps it; later duplicates
+                // (possible when two separately-numbered buses merge) are left for reassignment.
+                for ((_, b) in group) {
+                    if (b.busId >= 0 && claimed.add(b.busId)) {
+                        keepers.add(b)
+                    }
+                }
+                // Assign pass: everything that claimed nothing (unassigned or duplicate) gets
+                // the smallest free id.
+                var next = 0
+                for ((rack, b) in group) {
+                    if (b in keepers) continue
+                    while (next in claimed) next++
+                    b.assignBusId(next)
+                    claimed.add(next)
+                    next++
+                    changedRacks.add(rack)
+                }
+            }
+        }
+
+        for (rack in changedRacks) {
+            rack.setChanged()
+            rack.sendData()
+        }
+    }
+
+    /**
      * (Re)connects the PLC bus nodes of directly touching bus modules, including the single
      * cross-rack link into the +u neighbor. Connect-only: links only ever become stale
      * through node removal (a module leaving detaches its node in onDetach, which severs
@@ -263,6 +357,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val lvl = level ?: return
         if (lvl.isClientSide) return
         if (!bridgeable || isRemoved) return
+        ensureDigibusIds()
         val sorted = entities.sortedBy { it.u.value }
         for (i in 0 until sorted.size - 1) {
             val a = sorted[i]
@@ -293,7 +388,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val lastWires = last.entity.behaviors.filterIsInstance<DigibusBehavior>()
             .map { it.getWire(DigibusContextImpl(last.stack)) }
         val neighWires = neighborFirst.entity.behaviors.filterIsInstance<DigibusBehavior>()
-            .map { it.getWire(DigibusContextImpl(last.stack)) }
+            .map { it.getWire(DigibusContextImpl(neighborFirst.stack)) }
 
         return buildList {
             for (a in lastWires) {
@@ -760,9 +855,9 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
             entry.put("Item", placed.stack.save(registries))
             val data = CompoundTag()
             placed.entity.behaviors.forEachIndexed { idx, behaviour ->
-                val entry = CompoundTag()
-                behaviour.write(entry, registries, clientPacket)
-                entry.put("C$idx", entry)
+                val behaviourTag = CompoundTag()
+                behaviour.write(behaviourTag, registries, clientPacket)
+                if (!behaviourTag.isEmpty) data.put("C$idx", behaviourTag)
             }
             placed.entity.write(data, registries, clientPacket)
             if (!data.isEmpty) entry.put("Data", data)

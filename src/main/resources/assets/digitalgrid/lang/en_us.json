@@ -34,5 +34,6 @@
   "digitalgrid.goggles.plc_relay.state.open": "Open",
   "digitalgrid.goggles.plc_relay.coil": "Coil:",
   "digitalgrid.goggles.plc_relay.coil.on": "Energized",
-  "digitalgrid.goggles.plc_relay.coil.off": "Off"
+  "digitalgrid.goggles.plc_relay.coil.off": "Off",
+  "digitalgrid.goggles.digibus.name": "Bus name:"
 }

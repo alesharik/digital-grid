@@ -44,12 +44,13 @@ class DinRackPlcRelayEntity: DinRackEntity {
             DigitalgridConfig.CONFIG.plcRelay.minVoltage
         )
     }
+    private val digibusPeripheralBehavior by lazy { DigibusPeripheralBehavior(PlcRelayPeripheral(this)) }
 
     override val behaviors: List<Behavior> by lazy {
         arrayListOf(
             workDrawBehavior,
             relayBehavior,
-            DigibusPeripheralBehavior(PlcRelayPeripheral(this))
+            digibusPeripheralBehavior
         )
     }
 
@@ -73,14 +74,17 @@ class DinRackPlcRelayEntity: DinRackEntity {
     }
 
     override fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean {
-        Lang.builder().translate("goggles.plc_relay").style(ChatFormatting.GRAY).forGoggles(tooltip)
-        Lang.builder().translate("goggles.state").style(ChatFormatting.GRAY)
+        Lang.translate("goggles.plc_relay").style(ChatFormatting.GRAY).forGoggles(tooltip)
+        Lang.translate("goggles.digibus.name").style(ChatFormatting.GRAY)
+            .space().add(Lang.text(digibusPeripheralBehavior.peripheralName).style(ChatFormatting.AQUA))
+            .forGoggles(tooltip, 1)
+        Lang.translate("goggles.state").style(ChatFormatting.GRAY)
             .space().add(
                 if (relayBehavior.closed) Lang.translate("goggles.plc_relay.state.closed").style(ChatFormatting.GREEN)
                 else Lang.translate("goggles.plc_relay.state.open").style(ChatFormatting.DARK_GRAY)
             )
             .forGoggles(tooltip, 1)
-        Lang.builder().translate("goggles.plc_relay.coil").style(ChatFormatting.GRAY)
+        Lang.translate("goggles.plc_relay.coil").style(ChatFormatting.GRAY)
             .space().add(
                 if (relayBehavior.commanded) Lang.translate("goggles.plc_relay.coil.on").style(ChatFormatting.GREEN)
                 else Lang.translate("goggles.plc_relay.coil.off").style(ChatFormatting.DARK_GRAY)
