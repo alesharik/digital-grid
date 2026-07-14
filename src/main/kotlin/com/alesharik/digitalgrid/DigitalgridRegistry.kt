@@ -41,6 +41,9 @@ object DigitalgridRegistry {
                 output.accept(Items.DIN_RACK_PLC_RELAY)
                 output.accept(Items.PLC_PROGRAMMER)
                 output.accept(Items.PLASTIC)
+                output.accept(Items.MICROPROCESSOR)
+                output.accept(Items.CONTROL_CIRCUIT)
+                output.accept(Items.WIRELESS_CIRCUIT)
             }
             .build()
     })
@@ -104,6 +107,9 @@ object DigitalgridRegistry {
         val PLC_PROGRAMMER by ITEMS.register("plc_programmer", { -> Item(Item.Properties()) })
 
         val PLASTIC by ITEMS.register("plastic", { -> Item(Item.Properties()) })
+        val MICROPROCESSOR by ITEMS.register("microprocessor", { -> Item(Item.Properties()) })
+        val CONTROL_CIRCUIT by ITEMS.register("control_circuit", { -> Item(Item.Properties()) })
+        val WIRELESS_CIRCUIT by ITEMS.register("wireless_circuit", { -> Item(Item.Properties()) })
     }
 
     object DataComponents {
