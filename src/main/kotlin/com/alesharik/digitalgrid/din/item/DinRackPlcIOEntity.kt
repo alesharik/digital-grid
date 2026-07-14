@@ -102,7 +102,7 @@ class DinRackPlcIOEntity: DinRackEntity {
 
         /** Drive the pin to [volts], converted from the rack's 24V rail. Reading still works. */
         @LuaFunction
-        fun setVoltage(pin: Int, volts: Float) = luaImpl {
+        fun setVoltage(pin: Int, volts: Double) = luaImpl {
             ensurePowered()
             val volts = Volt(volts)
             if (volts > DigitalgridConfig.CONFIG.plcIo.maxVoltage) {
