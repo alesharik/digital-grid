@@ -8,8 +8,6 @@ import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer
 import com.alesharik.digitalgrid.din.rack.DinRackItem
-import dan200.computercraft.shared.util.NonNegativeId
-import net.minecraft.core.component.DataComponentType
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.BlockItem
@@ -112,15 +110,6 @@ object DigitalgridRegistry {
         val WIRELESS_CIRCUIT by ITEMS.register("wireless_circuit", { -> Item(Item.Properties()) })
     }
 
-    object DataComponents {
-        internal val DATA_COMPONENTS = DeferredRegister.createDataComponents(Digitalgrid.ID)
-
-        /** Persistent per-item module id; names the module's peripheral on the PLC bus (e.g. plc_io_3). */
-        val MODULE_ID: DataComponentType<NonNegativeId> by DATA_COMPONENTS.registerComponentType("module_id") { builder ->
-            builder.persistent(NonNegativeId.CODEC).networkSynchronized(NonNegativeId.STREAM_CODEC)
-        }
-    }
-
     object DinRackEntities {
         internal val DIN_RACK_ENTITIES: DeferredRegister<DinRackEntity> = DeferredRegister.create(DinRackRegistry.KEY, Digitalgrid.ID)
 
@@ -139,7 +128,6 @@ object DigitalgridRegistry {
             Items.ITEMS.register(bus)
             BlockEntities.BLOCK_ENTITIES.register(bus)
             DinRackEntities.DIN_RACK_ENTITIES.register(bus)
-            DataComponents.DATA_COMPONENTS.register(bus)
             CREATIVE_MODE_TABS.register(bus)
         }
     }
