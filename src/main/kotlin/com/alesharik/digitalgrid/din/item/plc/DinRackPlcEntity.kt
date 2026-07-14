@@ -9,6 +9,7 @@ import com.alesharik.digitalgrid.din.behavior.Behavior
 import com.alesharik.digitalgrid.din.behavior.digibus.DigibusModemBehavior
 import com.alesharik.digitalgrid.din.behavior.powergrid.PowerGridBehavior
 import com.alesharik.digitalgrid.din.behavior.powergrid.WorkDrawBehavior
+import com.alesharik.digitalgrid.infra.luaImpl
 import com.alesharik.digitalgrid.utils.Lang
 import com.alesharik.digitalgrid.utils.light.LightIndicator
 import com.mojang.blaze3d.vertex.PoseStack
@@ -241,8 +242,13 @@ class DinRackPlcEntity: DinRackEntity {
 
             /** Reboot this controller's computer. */
             @LuaFunction(mainThread = true)
-            fun reboot() {
+            fun reboot() = luaImpl {
                 computer?.reboot()
+            }
+
+            @LuaFunction
+            fun getRailVoltage(): Float = luaImpl {
+                workDrawBehavior.railVoltage?.value ?: 0.0f
             }
 
             override fun equals(other: IPeripheral?): Boolean = other === this
