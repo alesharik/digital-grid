@@ -23,8 +23,10 @@ class DigibusModemBehavior: DigibusBehavior {
         wire?.let { return it }
 
         context.markChanged()
-        return DigibusWire(context.blockEntity).also {
-            wire = it
+        return DigibusWire(context.blockEntity).also { w ->
+            wire = w
+            // The modem may already exist (computer created before a bus neighbor appeared).
+            internalWire?.let { w.node.connectTo(it) }
         }
     }
 
@@ -41,8 +43,11 @@ class DigibusModemBehavior: DigibusBehavior {
         val pe = Peripheral(ctx.blockEntity, me)
         me.link(pe)
 
+        internalWire?.remove()
         internalWire = me.node
         peripheral = pe
+        // The bus wire may already exist (module linked before the computer was created).
+        wire?.node?.connectTo(me.node)
 
         ctx.markChanged()
 
