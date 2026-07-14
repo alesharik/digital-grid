@@ -1,0 +1,33 @@
+name: Dev build
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Build Forge
+      uses: burrunan/gradle-cache-action@v3
+      with:
+        job-id: jdk21
+        arguments: build
+    - name: Upload Forge Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: build
+        path:
+          build/libs/digitalgrid-*.jar
+        if-no-files-found: error
+        retention-days: 30
