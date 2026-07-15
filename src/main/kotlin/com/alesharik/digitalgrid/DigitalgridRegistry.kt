@@ -42,6 +42,7 @@ object DigitalgridRegistry {
                 output.accept(Items.MICROPROCESSOR)
                 output.accept(Items.CONTROL_CIRCUIT)
                 output.accept(Items.WIRELESS_CIRCUIT)
+                output.accept(Items.DIGIBUS_CONNECTOR)
             }
             .build()
     })
@@ -108,6 +109,7 @@ object DigitalgridRegistry {
         val MICROPROCESSOR by ITEMS.register("microprocessor", { -> Item(Item.Properties()) })
         val CONTROL_CIRCUIT by ITEMS.register("control_circuit", { -> Item(Item.Properties()) })
         val WIRELESS_CIRCUIT by ITEMS.register("wireless_circuit", { -> Item(Item.Properties()) })
+        val DIGIBUS_CONNECTOR by ITEMS.register("digibus_connector", { -> Item(Item.Properties()) })
     }
 
     object DinRackEntities {
