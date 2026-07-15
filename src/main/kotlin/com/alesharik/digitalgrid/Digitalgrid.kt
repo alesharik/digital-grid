@@ -8,6 +8,7 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.common.Mod
 import net.neoforged.fml.config.ModConfig
 import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers
+import net.neoforged.neoforge.data.event.GatherDataEvent
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
@@ -39,5 +40,10 @@ object Digitalgrid {
     @SubscribeEvent
     fun registerEntityRenderers(event: RegisterRenderers) {
         DigitalgridRegistry.registerRenderers(event)
+    }
+
+    @SubscribeEvent
+    fun gatherData(event: GatherDataEvent) {
+        DigitalgridRecipies.gatherData(event)
     }
 }

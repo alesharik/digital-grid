@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:yellow_dye"
+    },
+    "B": {
+      "item": "minecraft:red_dye"
+    },
+    "C": {
+      "item": "minecraft:blue_dye"
+    },
+    "X": {
+      "item": "powergrid:insulated_copper_wire"
+    }
+  },
+  "pattern": [
+    "XXA",
+    "XXB",
+    "XXC"
+  ],
+  "result": {
+    "count": 6,
+    "id": "digitalgrid:digibus_connector"
+  }
+}
