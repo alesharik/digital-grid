@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "computercraft:pocket_computer_advanced"
+    },
+    "P": {
+      "item": "digitalgrid:plastic"
+    },
+    "Q": {
+      "item": "digitalgrid:digibus_connector"
+    },
+    "X": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "pattern": [
+    "XPX",
+    "XCX",
+    "XQX"
+  ],
+  "result": {
+    "count": 1,
+    "id": "digitalgrid:plc_programmer"
+  }
+}

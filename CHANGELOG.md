@@ -1,6 +1,7 @@
 ### Dev 01
 - add recipe to Bioplastic
 - add recipe to DigiBus connector
+- add recipe to PLC Programmer
 - add watchdog timer block
 - add DIN rack recipe
 - add PLC components - watchdog and modems

@@ -3,6 +3,7 @@ package com.alesharik.digitalgrid
 import com.alesharik.digitalgrid.utils.shaped
 import com.simibubi.create.AllItems
 import com.simibubi.create.api.data.recipe.PressingRecipeGen
+import dan200.computercraft.shared.ModRegistry
 import net.minecraft.core.HolderLookup
 import net.minecraft.data.PackOutput
 import net.minecraft.data.recipes.RecipeOutput
@@ -62,6 +63,17 @@ object DigitalgridRecipies {
                         .define('X', Items.IRON_INGOT)
                         .define('C', Items.CLOCK)
                         .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT))
+                }
+
+                shaped(DigitalgridRegistry.Items.PLC_PROGRAMMER, 1) {
+                    pattern("XPX")
+                        .pattern("XCX")
+                        .pattern("XQX")
+                        .define('X', Items.IRON_INGOT)
+                        .define('P', DigitalgridRegistry.Items.PLASTIC)
+                        .define('C', ModRegistry.Items.POCKET_COMPUTER_ADVANCED.get())
+                        .define('Q', DigitalgridRegistry.Items.DIGIBUS_CONNECTOR)
+                        .unlockedBy("has_digibus_connector", has(DigitalgridRegistry.Items.DIGIBUS_CONNECTOR))
                 }
             }
         }
