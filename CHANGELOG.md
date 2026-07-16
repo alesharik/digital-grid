@@ -8,3 +8,4 @@
 - limit PLC storage size to 64 KiB
 - make PLC API global, instead of creating peripheral
 - add casing and digibus casing + recipes
+- add recipe for battery module

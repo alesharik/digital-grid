@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_battery": {
+      "conditions": {
+        "items": [
+          {
+            "items": "powergrid:battery"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "digitalgrid:din_rack_battery"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_battery"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "digitalgrid:din_rack_battery"
+    ]
+  }
+}

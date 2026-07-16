@@ -11,6 +11,7 @@ import net.minecraft.data.recipes.RecipeOutput
 import net.minecraft.data.recipes.RecipeProvider
 import net.minecraft.world.item.Items
 import net.neoforged.neoforge.data.event.GatherDataEvent
+import org.patryk3211.powergrid.collections.ModdedBlocks
 import org.patryk3211.powergrid.collections.ModdedItems
 import java.util.concurrent.CompletableFuture
 
@@ -100,6 +101,13 @@ object DigitalgridRecipies {
                         .define('X', AllItems.COPPER_NUGGET)
                         .define('Y', DigitalgridRegistry.Items.DIN_RACK_CASING)
                         .unlockedBy("has_casing", has(DigitalgridRegistry.Items.DIN_RACK_CASING))
+                }
+
+                shapeless(DigitalgridRegistry.Items.DIN_RACK_BATTERY, 1) {
+                    requires(DigitalgridRegistry.Items.DIN_RACK_CASING)
+                        .requires(ModdedBlocks.BATTERY)
+                        .requires(DigitalgridRegistry.Items.CONTROL_CIRCUIT)
+                        .unlockedBy("has_battery", has(ModdedBlocks.BATTERY))
                 }
             }
         }

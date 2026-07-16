@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "digitalgrid:din_rack_casing"
+    },
+    {
+      "item": "powergrid:battery"
+    },
+    {
+      "item": "digitalgrid:control_circuit"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "digitalgrid:din_rack_battery"
+  }
+}
