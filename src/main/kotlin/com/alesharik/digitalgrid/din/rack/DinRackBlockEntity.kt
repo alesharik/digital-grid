@@ -805,7 +805,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         for (i in list.indices) {
             val entry = list.getCompound(i)
             val itemTag = entry.get("Item") ?: continue
-            val stack = ItemStack.parse(registries, itemTag).orElse(ItemStack.EMPTY)
+            val stack = ItemStack.parse(registries, itemTag).orElse(ItemStack.EMPTY)!!
             if (stack.isEmpty) {
                 Digitalgrid.LOGGER.warn("Skipping DIN module at {}: unparseable item", worldPosition)
                 continue
@@ -870,6 +870,17 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         }
         val direction = state.getValue(HorizontalDirectionalBlock.FACING)
         return box.rotateAroundY(direction.rotationYDegreesInv().toInt())
+    }
+
+    override fun tick() {
+        super.tick()
+
+        val level = this.level ?: return
+        if (!level.isClientSide || this.isVirtual) {
+            entities.forEach {
+                it.entity.behaviors.forEach { b -> b.serverTick(level as ServerLevel, this) }
+            }
+        }
     }
 
     data class DinRackEntityPlacement(

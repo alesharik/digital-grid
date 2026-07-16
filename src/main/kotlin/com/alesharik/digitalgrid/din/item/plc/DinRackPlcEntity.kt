@@ -218,6 +218,10 @@ class DinRackPlcEntity(stack: ItemStack): DinRackEntity {
                 comps.take(free.size).forEachIndexed { i, comp ->
                     c.setPeripheral(free[i], comp.getPeripheral())
                 }
+
+                for (component in comps) {
+                    component.onAttachComputer(c)
+                }
             }
         }
 

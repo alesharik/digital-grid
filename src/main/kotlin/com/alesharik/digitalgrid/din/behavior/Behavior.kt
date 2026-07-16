@@ -3,6 +3,7 @@ package com.alesharik.digitalgrid.din.behavior
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
@@ -31,6 +32,8 @@ interface Behavior {
 
     /** Called when this module instance leaves a placement (removed by a player) or the rack unloads. */
     fun onDetach() {}
+
+    fun serverTick(level: ServerLevel, be: BlockEntity) {}
 
     /** Handle to the owning rack, handed to a module in [onAttach]. Values are read live. */
     interface AttachContext {

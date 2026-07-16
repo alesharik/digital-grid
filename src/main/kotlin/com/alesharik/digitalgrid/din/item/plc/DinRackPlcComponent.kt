@@ -4,6 +4,7 @@ import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.behavior.Behavior
 import com.mojang.blaze3d.vertex.PoseStack
 import dan200.computercraft.api.peripheral.IPeripheral
+import dan200.computercraft.shared.computer.core.ServerComputer
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.network.chat.Component
 import net.minecraft.world.level.block.state.BlockState
@@ -24,4 +25,6 @@ interface DinRackPlcComponent: Behavior {
         light: Int,
         overlay: Int
     ) {}
+
+    fun onAttachComputer(computer: ServerComputer) {}
 }

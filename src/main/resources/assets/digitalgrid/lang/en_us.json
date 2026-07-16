@@ -18,6 +18,7 @@
   "item.digitalgrid.watchdog_timer": "Watchdog Timer",
   "item.digitalgrid.plc_wireless_modem": "Wireless Modem",
   "item.digitalgrid.plc_ender_modem": "Ender Modem",
+  "item.digitalgrid.plc_watchdog": "Watchdog",
   "digitalgrid.goggles.state": "State:",
   "digitalgrid.goggles.voltage": "Voltage:",
   "digitalgrid.goggles.current": "Current:",
@@ -46,5 +47,6 @@
   "digitalgrid.goggles.digibus.name": "Bus name:",
   "digitalgrid.tooltip.plc_components": "Installed components:",
   "digitalgrid.goggles.plc_component.wireless_modem": "Wireless Modem",
-  "digitalgrid.goggles.plc_component.ender_modem": "Ender Modem"
+  "digitalgrid.goggles.plc_component.ender_modem": "Ender Modem",
+  "digitalgrid.goggles.plc_component.watchdog": "Watchdog"
 }

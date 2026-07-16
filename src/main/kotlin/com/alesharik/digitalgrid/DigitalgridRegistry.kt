@@ -10,6 +10,7 @@ import com.alesharik.digitalgrid.din.item.plc.DinRackPlcEntity
 import com.alesharik.digitalgrid.din.item.plc.DinRackPlcItem
 import com.alesharik.digitalgrid.din.item.plc.component.PlcComponentRegistry
 import com.alesharik.digitalgrid.din.item.plc.component.PlcComponents
+import com.alesharik.digitalgrid.din.item.plc.component.PlcWatchdogComponent
 import com.alesharik.digitalgrid.din.item.plc.component.PlcWirelessModemComponent
 import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
@@ -33,6 +34,7 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderer
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import net.neoforged.neoforge.registries.NewRegistryEvent
+import org.patryk3211.powergrid.collections.ModdedItems
 import thedarkcolour.kotlinforforge.neoforge.forge.getValue
 import net.minecraft.core.registries.Registries as McRegistries
 
@@ -176,6 +178,15 @@ object DigitalgridRegistry {
                     Lang.translate("item.digitalgrid.plc_ender_modem").component(),
                     { listOf(Items.WIRELESS_CIRCUIT, net.minecraft.world.item.Items.ENDER_PEARL) },
                     { PlcWirelessModemComponent(advanced = true) }
+                )
+            }
+
+        val WATCHDOG: DeferredHolder<PlcComponentRegistry.PlcComponentType, PlcComponentRegistry.PlcComponentType> =
+            PLC_COMPONENT_TYPES.register("plc_watchdog") { ->
+                PlcComponentRegistry.PlcComponentType(
+                    Lang.translate("item.digitalgrid.plc_watchdog").component(),
+                    { listOf(ModdedItems.IRON_WIRE.get(), net.minecraft.world.item.Items.CLOCK) },
+                    { PlcWatchdogComponent() }
                 )
             }
     }
