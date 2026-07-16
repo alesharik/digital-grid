@@ -1,6 +1,7 @@
 package com.alesharik.digitalgrid.utils.voxel
 
 import net.minecraft.core.Direction
+import net.minecraft.world.level.block.DirectionalBlock
 import net.minecraft.world.level.block.HorizontalDirectionalBlock
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.shapes.VoxelShape
@@ -14,6 +15,10 @@ class DirectionalVoxelShape(private val shape: VoxelShape) {
     fun get(direction: Direction): VoxelShape = cache[direction]!!
 
     fun get(state: BlockState): VoxelShape {
+        return get(state.getValue(DirectionalBlock.FACING))
+    }
+
+    fun getHorizontal(state: BlockState): VoxelShape {
         return get(state.getValue(HorizontalDirectionalBlock.FACING))
     }
 }

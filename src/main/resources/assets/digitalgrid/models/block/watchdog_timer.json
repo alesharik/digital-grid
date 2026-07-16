@@ -1,0 +1,84 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "digitalgrid:block/watchdog_timer",
+		"particle": "digitalgrid:block/watchdog_timer"
+	},
+	"elements": [
+		{
+			"from": [1, 1, 0],
+			"to": [15, 15, 2],
+			"rotation": {"angle": 0, "axis": "y", "origin": [1, 1, 0]},
+			"faces": {
+				"north": {"uv": [0, 0, 3.5, 4], "texture": "#0"},
+				"east": {"uv": [2.5, 4, 3, 8], "texture": "#0"},
+				"south": {"uv": [3.5, 0, 7, 4], "texture": "#0"},
+				"west": {"uv": [3, 4, 3.5, 8], "texture": "#0"},
+				"up": {"uv": [7, 4.5, 3.5, 4], "texture": "#0"},
+				"down": {"uv": [7, 4.5, 3.5, 5], "texture": "#0"}
+			}
+		},
+		{
+			"from": [9, 2, 2],
+			"to": [14, 14, 3],
+			"rotation": {"angle": 0, "axis": "y", "origin": [12, 2, 2]},
+			"faces": {
+				"north": {"uv": [0, 4, 1.25, 7.5], "texture": "#0"},
+				"east": {"uv": [3.5, 5, 3.75, 8.5], "texture": "#0"},
+				"south": {"uv": [1.25, 4, 2.5, 7.5], "texture": "#0"},
+				"west": {"uv": [3.75, 5, 4, 8.5], "texture": "#0"},
+				"up": {"uv": [5.25, 5.25, 4, 5], "texture": "#0"},
+				"down": {"uv": [5.25, 5.25, 4, 5.5], "texture": "#0"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"rotation": [56, 0, 0],
+			"translation": [0, -1.75, 1],
+			"scale": [0.33008, 0.33008, 0.33008]
+		},
+		"thirdperson_lefthand": {
+			"rotation": [56, 0, 0],
+			"translation": [0, -2, 0.5],
+			"scale": [0.33008, 0.33008, 0.33008]
+		},
+		"firstperson_righthand": {
+			"rotation": [0, -65, 0],
+			"translation": [-1.25, 0, 0],
+			"scale": [0.61328, 0.61328, 0.61328]
+		},
+		"firstperson_lefthand": {
+			"rotation": [0, -58.75, 0],
+			"translation": [-1.5, 0.75, 0.25],
+			"scale": [0.61328, 0.61328, 0.61328]
+		},
+		"ground": {
+			"translation": [-0.25, 0, 4],
+			"scale": [0.60352, 0.60352, 0.60352]
+		},
+		"gui": {
+			"rotation": [27.52, 47.21, -1.38],
+			"translation": [3.75, -1.5, 0],
+			"scale": [0.68164, 0.68164, 0.68164]
+		},
+		"fixed": {
+			"rotation": [180, -3, 180],
+			"translation": [0, 0, -7]
+		},
+		"on_shelf": {
+			"translation": [0, 0, 2.75]
+		}
+	},
+	"groups": [
+		{
+			"name": "VoxelShapes",
+			"origin": [1, 1, 0],
+			"scope": 0,
+			"color": 0,
+			"children": [0, 1]
+		}
+	]
+}

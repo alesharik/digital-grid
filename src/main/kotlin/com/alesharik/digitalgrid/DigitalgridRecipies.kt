@@ -54,6 +54,15 @@ object DigitalgridRecipies {
                         .define('C', ModdedItems.WIRE)
                         .unlockedBy("has_copper_wire", has(ModdedItems.WIRE))
                 }
+
+                shaped(DigitalgridRegistry.Blocks.WATCHDOG_TIMER, 1) {
+                    pattern(" X ")
+                        .pattern("XCX")
+                        .pattern(" X ")
+                        .define('X', Items.IRON_INGOT)
+                        .define('C', Items.CLOCK)
+                        .unlockedBy("has_iron_ingot", has(Items.IRON_INGOT))
+                }
             }
         }
     }

@@ -1,13 +1,20 @@
 package com.alesharik.digitalgrid
 
+import com.alesharik.digitalgrid.block.WatchdogTimerBlock
+import com.alesharik.digitalgrid.block.WatchdogTimerBlockEntity
+import com.alesharik.digitalgrid.block.WatchdogTimerBlockEntityRenderer
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.DinRackRegistry
 import com.alesharik.digitalgrid.din.item.*
 import com.alesharik.digitalgrid.din.item.plc.DinRackPlcEntity
+import com.alesharik.digitalgrid.din.item.plc.DinRackPlcItem
+import com.alesharik.digitalgrid.din.item.plc.component.*
 import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer
 import com.alesharik.digitalgrid.din.rack.DinRackItem
+import dan200.computercraft.api.peripheral.PeripheralCapability
+import net.minecraft.core.component.DataComponentType
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
 import net.minecraft.world.item.BlockItem
@@ -15,12 +22,18 @@ import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.crafting.RecipeSerializer
+import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer
 import net.minecraft.world.level.block.entity.BlockEntityType
+import net.minecraft.world.level.block.state.BlockBehaviour
 import net.neoforged.bus.api.IEventBus
+import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
 import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers
+import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import net.neoforged.neoforge.registries.NewRegistryEvent
 import thedarkcolour.kotlinforforge.neoforge.forge.getValue
+import net.minecraft.core.registries.Registries as McRegistries
 
 object DigitalgridRegistry {
     internal val CREATIVE_MODE_TABS: DeferredRegister<CreativeModeTab> = DeferredRegister.create(BuiltInRegistries.CREATIVE_MODE_TAB, Digitalgrid.ID)
@@ -31,6 +44,7 @@ object DigitalgridRegistry {
             .icon { ItemStack(Items.DIN_RACK) }
             .displayItems { _: ItemDisplayParameters?, output: CreativeModeTab.Output ->
                 output.accept(Items.DIN_RACK)
+                output.accept(Items.WATCHDOG_TIMER)
                 output.accept(Items.DIN_RACK_PATCH)
                 output.accept(Items.DIN_RACK_BATTERY)
                 output.accept(Items.DIN_RACK_POWER_SUPPLY)
@@ -49,24 +63,37 @@ object DigitalgridRegistry {
 
     fun registerRenderers(event: RegisterRenderers) {
         event.registerBlockEntityRenderer(BlockEntities.DIN_RACK) { DinRackBlockEntityRenderer() }
+        event.registerBlockEntityRenderer(BlockEntities.WATCHDOG_TIMER) { WatchdogTimerBlockEntityRenderer() }
+    }
+
+    fun registerCapabilities(event: RegisterCapabilitiesEvent) {
+        event.registerBlockEntity(
+            PeripheralCapability.get(),
+            BlockEntities.WATCHDOG_TIMER,
+            { be, _ -> be.peripheral },
+        )
     }
 
     object Blocks {
         internal val BLOCKS: DeferredRegister.Blocks = DeferredRegister.createBlocks(Digitalgrid.ID)
 
         val DIN_RACK by BLOCKS.register("din_rack") { -> DinRackBlock() }
+        val WATCHDOG_TIMER by BLOCKS.register("watchdog_timer") { -> WatchdogTimerBlock(BlockBehaviour.Properties.of()) }
     }
 
     object BlockEntities {
         internal val BLOCK_ENTITIES = DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, Digitalgrid.ID)
 
         val DIN_RACK by BLOCK_ENTITIES.register("din_rack", { -> BlockEntityType.Builder.of(::DinRackBlockEntity, Blocks.DIN_RACK).build(null) })
+        val WATCHDOG_TIMER by BLOCK_ENTITIES.register("watchdog_timer", { -> BlockEntityType.Builder.of(::WatchdogTimerBlockEntity, Blocks.WATCHDOG_TIMER).build(null) })
     }
 
     object Items {
         internal val ITEMS: DeferredRegister.Items = DeferredRegister.createItems(Digitalgrid.ID)
 
         val DIN_RACK by ITEMS.register("din_rack", { -> BlockItem(Blocks.DIN_RACK, Item.Properties()) })
+        val WATCHDOG_TIMER by ITEMS.register("watchdog_timer", { -> BlockItem(Blocks.WATCHDOG_TIMER, Item.Properties()) })
+
         val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { ->
             DinRackItem(
                 Item.Properties(),

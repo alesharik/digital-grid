@@ -13,6 +13,13 @@ fun Direction.rotationYDegrees(): Float = when (this) {
     else -> 0f
 }
 
+/** Pose-stack Y rotation (around block center) matching [rotateDirection] for horizontal directions. */
+fun Direction.rotationXDegrees(): Float = when (this) {
+    Direction.UP -> 90f
+    Direction.DOWN -> 270f
+    else -> 0f
+}
+
 /** Pose-stack Y rotation (around block center, inversed) matching [rotateDirection] for horizontal directions. */
 fun Direction.rotationYDegreesInv(): Float = when (this) {
     Direction.NORTH -> 0f

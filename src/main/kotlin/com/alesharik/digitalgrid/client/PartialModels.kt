@@ -18,11 +18,16 @@ object PartialModels {
     val DIN_PLC_RELAY = dinModel("plc_relay")
     val DIN_PLC_RELAY_LIGHT = dinModel("plc_relay_light")
 
+    val WATCHDOG_TIMER_LIGHT_WORK = blockModel("watchdog_timer_light_work")
+    val WATCHDOG_TIMER_LIGHT_ACTIVITY = blockModel("watchdog_timer_light_activity")
+
     // Forces the object initializer to run; must be called during client mod
     // construction so all partials exist before ModelEvent.RegisterAdditional.
     fun init() {}
 
     private fun dinModel(path: String) = model("din/$path")
+
+    private fun blockModel(path: String) = model("block/$path")
 
     private fun model(path: String): PartialModel =
         PartialModel.of(ResourceLocation.fromNamespaceAndPath(Digitalgrid.ID, path))

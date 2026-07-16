@@ -45,7 +45,7 @@ class DinRackBlock: ElectricBlock(
 
     override fun getShape(state: BlockState, level: BlockGetter, pos: BlockPos, context: CollisionContext): VoxelShape =
         getBlockEntityOptional(level, pos)
-            .map { it.shape.get(state) }
+            .map { it.shape.getHorizontal(state) }
             .orElseGet { Shapes.empty() }
 
     override fun useItemOn(

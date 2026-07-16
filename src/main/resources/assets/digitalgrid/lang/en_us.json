@@ -1,6 +1,7 @@
 {
   "itemGroup.digitalgrid": "Digital Grid",
   "block.digitalgrid.din_rack": "DIN Rack",
+  "block.digitalgrid.watchdog_timer": "Watchdog Timer",
   "item.digitalgrid.din_rack": "DIN Rack",
   "item.digitalgrid.din_rack_patch": "Rack Patch",
   "item.digitalgrid.din_rack_battery": "Rack Battery",
