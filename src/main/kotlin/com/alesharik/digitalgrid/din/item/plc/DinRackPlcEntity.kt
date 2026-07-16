@@ -199,6 +199,7 @@ class DinRackPlcEntity(stack: ItemStack): DinRackEntity {
             computerId = id
             val props = ServerComputer.properties(id, ComputerFamily.ADVANCED)
                 .terminalSize(TerminalSize(TERM_WIDTH, TERM_HEIGHT))
+                .storageCapacity(DigitalgridConfig.CONFIG.plc.storageSize)
             return ServerComputer(level, ctx.pos, props).also { c ->
                 c.register()
                 computer = c

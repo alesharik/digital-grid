@@ -45,7 +45,9 @@ object DigitalgridConfig {
             plc = block("plc") {
                 Config.Plc(
                     currentDrawSpec = comment("DIN PLC current draw from the internal 24V bus, in amperes (at nominal voltage)")
-                        .defineInRange("currentDraw", 1.0, 0.001, 100.0)
+                        .defineInRange("currentDraw", 1.0, 0.001, 100.0),
+                    storageSizeSpec = comment("PLC internal drive storage size")
+                        .defineInRange("storageSize", 64 * 1024L, 4 * 1024, 1 * 1024 * 1024) // 64 KiB
                 )
             },
             plcIo = block("plcIo") {
@@ -144,11 +146,17 @@ object DigitalgridConfig {
 
         data class Plc(
             private val currentDrawSpec: ModConfigSpec.DoubleValue,
+            private val storageSizeSpec: ModConfigSpec.LongValue,
         ) {
             /**
              * DIN PLC current draw from the internal 24V bus, in amperes (at nominal voltage)
              */
             val currentDraw by currentDrawSpec.asVar(::Ampere)
+
+            /**
+             * PLC storage size, in bytes
+             */
+            val storageSize by storageSizeSpec.asVar()
         }
 
         data class PlcIo(

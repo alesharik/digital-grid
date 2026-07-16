@@ -15,6 +15,8 @@ inline fun <R> ModConfigSpec.Builder.block(name: String, crossinline fn: ModConf
 
 fun ModConfigSpec.DoubleValue.asVar(): VarDelegate<Double> = VarDelegate { get() }
 
+fun ModConfigSpec.LongValue.asVar(): VarDelegate<Long> = VarDelegate { get() }
+
 inline fun <T> ModConfigSpec.DoubleValue.asVar(crossinline map: (Double) -> T): VarDelegate<T> = VarDelegate { map(get()) }
 
 class VarDelegate<T>(
