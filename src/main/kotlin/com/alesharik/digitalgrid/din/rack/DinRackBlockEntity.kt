@@ -826,7 +826,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
                 Digitalgrid.LOGGER.warn("Skipping DIN module at {}: {} is not a DinRackItem", worldPosition, stack.item)
                 continue
             }
-            val entity = item.createEntity()
+            val entity = item.createEntity(stack)
             if (entry.contains("Data", Tag.TAG_COMPOUND.toInt())) {
                 val cmp = entry.getCompound("Data")
                 entity.behaviors.forEachIndexed { idx, behaviour ->

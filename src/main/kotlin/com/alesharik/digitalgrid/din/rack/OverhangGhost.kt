@@ -40,7 +40,8 @@ class OverhangGhost private constructor(
     companion object {
         fun of(offset: Int, item: DinRackItem): OverhangGhost? {
             if (offset >= 0 || offset <= -DinRackBlockEntity.RACK_WIDTH) return null
-            val entity = item.createEntity()
+            // Ghost is geometry-only (shape/width/terminals); stack-derived behaviors don't matter here.
+            val entity = item.createEntity(item.defaultInstance)
             if (offset + entity.width.value <= 0) return null
             return OverhangGhost(offset, item, entity)
         }

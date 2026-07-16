@@ -72,7 +72,7 @@ class DinRackBlock: ElectricBlock(
         val dinItem = item.item as? DinRackItem
             ?: return super.useItemOn(item, st, lv, pos, player, hand, hit)
 
-        val entity = dinItem.createEntity()
+        val entity = dinItem.createEntity(item)
         if (!be.canPlace(u, entity.width)) return ItemInteractionResult.FAIL
         if (lv.isClientSide) return ItemInteractionResult.sidedSuccess(true)
         val stored = item.copyWithCount(1)
