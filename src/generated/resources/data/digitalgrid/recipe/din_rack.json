@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "C": {
+      "item": "powergrid:wire"
+    },
+    "X": {
+      "item": "minecraft:iron_ingot"
+    }
+  },
+  "pattern": [
+    " CX",
+    "XXX",
+    " CX"
+  ],
+  "result": {
+    "count": 1,
+    "id": "digitalgrid:din_rack"
+  }
+}
