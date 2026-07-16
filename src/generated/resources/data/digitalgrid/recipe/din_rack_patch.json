@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "X": {
+      "item": "create:copper_nugget"
+    },
+    "Y": {
+      "item": "digitalgrid:din_rack_casing"
+    }
+  },
+  "pattern": [
+    "X",
+    "Y",
+    "X"
+  ],
+  "result": {
+    "count": 1,
+    "id": "digitalgrid:din_rack_patch"
+  }
+}

@@ -1,6 +1,7 @@
 package com.alesharik.digitalgrid
 
 import com.alesharik.digitalgrid.utils.shaped
+import com.alesharik.digitalgrid.utils.shapeless
 import com.simibubi.create.AllItems
 import com.simibubi.create.api.data.recipe.PressingRecipeGen
 import dan200.computercraft.shared.ModRegistry
@@ -74,6 +75,31 @@ object DigitalgridRecipies {
                         .define('C', ModRegistry.Items.POCKET_COMPUTER_ADVANCED.get())
                         .define('Q', DigitalgridRegistry.Items.DIGIBUS_CONNECTOR)
                         .unlockedBy("has_digibus_connector", has(DigitalgridRegistry.Items.DIGIBUS_CONNECTOR))
+                }
+
+                shaped(DigitalgridRegistry.Items.DIN_RACK_CASING, 3) {
+                    pattern("XXX")
+                        .pattern("I X")
+                        .pattern("XXX")
+                        .define('X', DigitalgridTags.Items.PLASTICS)
+                        .define('I', Items.IRON_INGOT)
+                        .unlockedBy("has_plastic", has(DigitalgridRegistry.Items.PLASTIC))
+                        .unlockedBy("has_plastic_tag", has(DigitalgridTags.Items.PLASTICS))
+                }
+
+                shapeless(DigitalgridRegistry.Items.DIN_RACK_CASING_DIGIBUS, 1) {
+                    requires(DigitalgridRegistry.Items.DIN_RACK_CASING)
+                        .requires(DigitalgridRegistry.Items.DIGIBUS_CONNECTOR)
+                        .unlockedBy("has_casing", has(DigitalgridRegistry.Items.DIN_RACK_CASING))
+                }
+
+                shaped(DigitalgridRegistry.Items.DIN_RACK_PATCH, 1) {
+                    pattern("X")
+                        .pattern("Y")
+                        .pattern("X")
+                        .define('X', AllItems.COPPER_NUGGET)
+                        .define('Y', DigitalgridRegistry.Items.DIN_RACK_CASING)
+                        .unlockedBy("has_casing", has(DigitalgridRegistry.Items.DIN_RACK_CASING))
                 }
             }
         }

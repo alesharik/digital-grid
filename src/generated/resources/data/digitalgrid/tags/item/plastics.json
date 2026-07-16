@@ -1,0 +1,9 @@
+{
+  "values": [
+    "digitalgrid:plastic",
+    {
+      "id": "#c:ingots/plastic",
+      "required": false
+    }
+  ]
+}

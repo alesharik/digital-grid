@@ -6,6 +6,8 @@ import net.minecraft.resources.ResourceLocation
 
 object PartialModels {
     val DIN_PATCH = dinModel("patch")
+    val DIN_CASING = dinModel("casing")
+    val DIN_CASING_DIGIBUS = dinModel("casing_digibus")
     val DIN_BATTERY = dinModel("battery")
     val DIN_BATTERY_LIGHT = dinModel("battery_light")
     val DIN_POWER_SUPPLY = dinModel("power_supply")

@@ -1,9 +1,15 @@
-// 1.21.1	2026-07-16T23:58:28.985866558	Recipes
+// 1.21.1	2026-07-17T01:47:08.372876728	Recipes
 de53095d679daa7468f321966719c92a9ec163cf data/digitalgrid/advancement/recipes/misc/digibus_connector.json
 4aae81579597290d310d054c72ea3f98faaabd79 data/digitalgrid/advancement/recipes/misc/din_rack.json
+4419297df03151f52be8f071eb231aea598f9573 data/digitalgrid/advancement/recipes/misc/din_rack_casing.json
+ee39f35e80c73442b7e9bec16ed271731841f268 data/digitalgrid/advancement/recipes/misc/din_rack_casing_digibus.json
+9de9e6aaba50fd3022e331bff65df2bb7ff0945b data/digitalgrid/advancement/recipes/misc/din_rack_patch.json
 bf05739fbbbe8354b12209323aee2455bcba9c01 data/digitalgrid/advancement/recipes/misc/plc_programmer.json
 b43633ebbdf3d07295d58b60b7b205d4e43d686e data/digitalgrid/advancement/recipes/misc/watchdog_timer.json
 5ec1f67c9e9355ca9f3c92c655519bdcf619c54d data/digitalgrid/recipe/digibus_connector.json
 1219681414cf035386e7f8aa01c484aee833538e data/digitalgrid/recipe/din_rack.json
+9d1975e24a3a3eeaf40c498b31e6b0612fdb5773 data/digitalgrid/recipe/din_rack_casing.json
+fa3f9008d4f0815a27801597e080b35b5c7c87b4 data/digitalgrid/recipe/din_rack_casing_digibus.json
+3c85a1ead7148ca836fde513b9fa410d9d88f4f8 data/digitalgrid/recipe/din_rack_patch.json
 3479d2992e7c05f8061537e30764683fef9f19d9 data/digitalgrid/recipe/plc_programmer.json
 9aea274cff3da6112b0865e008840a3e0e07b687 data/digitalgrid/recipe/watchdog_timer.json

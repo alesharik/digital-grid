@@ -48,6 +48,7 @@ object Digitalgrid {
 
     @SubscribeEvent
     fun gatherData(event: GatherDataEvent) {
+        DigitalgridTags.gatherData(event)
         DigitalgridRecipies.gatherData(event)
     }
 

@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "digitalgrid:din_rack_casing"
+    },
+    {
+      "item": "digitalgrid:digibus_connector"
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "digitalgrid:din_rack_casing_digibus"
+  }
+}

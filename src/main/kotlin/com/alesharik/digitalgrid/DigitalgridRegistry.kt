@@ -49,6 +49,8 @@ object DigitalgridRegistry {
                 output.accept(Items.DIN_RACK)
                 output.accept(Items.WATCHDOG_TIMER)
                 output.accept(Items.DIN_RACK_PATCH)
+                output.accept(Items.DIN_RACK_CASING)
+                output.accept(Items.DIN_RACK_CASING_DIGIBUS)
                 output.accept(Items.DIN_RACK_BATTERY)
                 output.accept(Items.DIN_RACK_POWER_SUPPLY)
                 output.accept(Items.DIN_RACK_PLC)
@@ -103,6 +105,18 @@ object DigitalgridRegistry {
                 DinRackPatchEntity::class.java
             )
         })
+        val DIN_RACK_CASING by ITEMS.register("din_rack_casing", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackCasingEntity::class.java
+            )
+        })
+        val DIN_RACK_CASING_DIGIBUS by ITEMS.register("din_rack_casing_digibus", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackDigibusCasingEntity::class.java
+            )
+        })
         val DIN_RACK_BATTERY by ITEMS.register("din_rack_battery", { ->
             DinRackItem(
                 Item.Properties(),
@@ -141,6 +155,8 @@ object DigitalgridRegistry {
         internal val DIN_RACK_ENTITIES: DeferredRegister<DinRackEntity> = DeferredRegister.create(DinRackRegistry.KEY, Digitalgrid.ID)
 
         val DIN_RACK_PATCH by DIN_RACK_ENTITIES.register("din_rack_patch", { -> DinRackPatchEntity() })
+        val DIN_RACK_CASING by DIN_RACK_ENTITIES.register("din_rack_casing", { -> DinRackCasingEntity() })
+        val DIN_RACK_CASING_DIGIBUS by DIN_RACK_ENTITIES.register("din_rack_casing_digibus", { -> DinRackDigibusCasingEntity() })
         val DIN_RACK_BATTERY by DIN_RACK_ENTITIES.register("din_rack_battery", { -> DinRackBatteryEntity() })
         val DIN_RACK_POWER_SUPPLY by DIN_RACK_ENTITIES.register("din_rack_power_supply", { -> DinRackPowerSupplyEntity() })
         val DIN_RACK_PLC by DIN_RACK_ENTITIES.register("din_rack_plc", { -> DinRackPlcEntity(Items.DIN_RACK_PLC.defaultInstance) })

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "I": {
+      "item": "minecraft:iron_ingot"
+    },
+    "X": {
+      "tag": "digitalgrid:plastics"
+    }
+  },
+  "pattern": [
+    "XXX",
+    "I X",
+    "XXX"
+  ],
+  "result": {
+    "count": 3,
+    "id": "digitalgrid:din_rack_casing"
+  }
+}

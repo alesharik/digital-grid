@@ -1,0 +1,43 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_plastic": {
+      "conditions": {
+        "items": [
+          {
+            "items": "digitalgrid:plastic"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_plastic_tag": {
+      "conditions": {
+        "items": [
+          {
+            "items": "#digitalgrid:plastics"
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    },
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "digitalgrid:din_rack_casing"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_plastic",
+      "has_plastic_tag"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "digitalgrid:din_rack_casing"
+    ]
+  }
+}
