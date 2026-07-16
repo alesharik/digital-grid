@@ -14,6 +14,10 @@
   "item.digitalgrid.microprocessor": "Microprocessor",
   "item.digitalgrid.control_circuit": "Control Circuit",
   "item.digitalgrid.wireless_circuit": "Wireless Circuit",
+  "item.digitalgrid.digibus_connector": "DigiBus Connector",
+  "item.digitalgrid.watchdog_timer": "Watchdog Timer",
+  "item.digitalgrid.plc_wireless_modem": "Wireless Modem",
+  "item.digitalgrid.plc_ender_modem": "Ender Modem",
   "digitalgrid.goggles.state": "State:",
   "digitalgrid.goggles.voltage": "Voltage:",
   "digitalgrid.goggles.current": "Current:",
@@ -39,5 +43,8 @@
   "digitalgrid.goggles.plc_relay.coil": "Coil:",
   "digitalgrid.goggles.plc_relay.coil.on": "Energized",
   "digitalgrid.goggles.plc_relay.coil.off": "Off",
-  "digitalgrid.goggles.digibus.name": "Bus name:"
+  "digitalgrid.goggles.digibus.name": "Bus name:",
+  "digitalgrid.tooltip.plc_components": "Installed components:",
+  "digitalgrid.goggles.plc_component.wireless_modem": "Wireless Modem",
+  "digitalgrid.goggles.plc_component.ender_modem": "Ender Modem"
 }

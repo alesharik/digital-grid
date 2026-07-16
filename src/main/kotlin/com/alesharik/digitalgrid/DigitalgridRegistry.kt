@@ -8,11 +8,14 @@ import com.alesharik.digitalgrid.din.DinRackRegistry
 import com.alesharik.digitalgrid.din.item.*
 import com.alesharik.digitalgrid.din.item.plc.DinRackPlcEntity
 import com.alesharik.digitalgrid.din.item.plc.DinRackPlcItem
-import com.alesharik.digitalgrid.din.item.plc.component.*
+import com.alesharik.digitalgrid.din.item.plc.component.PlcComponentRegistry
+import com.alesharik.digitalgrid.din.item.plc.component.PlcComponents
+import com.alesharik.digitalgrid.din.item.plc.component.PlcWirelessModemComponent
 import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer
 import com.alesharik.digitalgrid.din.rack.DinRackItem
+import com.alesharik.digitalgrid.utils.Lang
 import dan200.computercraft.api.peripheral.PeripheralCapability
 import net.minecraft.core.component.DataComponentType
 import net.minecraft.core.registries.BuiltInRegistries
@@ -22,8 +25,6 @@ import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
-import net.minecraft.world.item.crafting.RecipeSerializer
-import net.minecraft.world.item.crafting.SimpleCraftingRecipeSerializer
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockBehaviour
 import net.neoforged.bus.api.IEventBus
@@ -112,12 +113,7 @@ object DigitalgridRegistry {
                 DinRackPowerSupplyEntity::class.java
             )
         })
-        val DIN_RACK_PLC by ITEMS.register("din_rack_plc", { ->
-            DinRackItem(
-                Item.Properties(),
-                DinRackPlcEntity::class.java
-            )
-        })
+        val DIN_RACK_PLC by ITEMS.register("din_rack_plc", { -> DinRackPlcItem(Item.Properties()) })
         val DIN_RACK_PLC_IO by ITEMS.register("din_rack_plc_io", { ->
             DinRackItem(
                 Item.Properties(),
@@ -145,18 +141,57 @@ object DigitalgridRegistry {
         val DIN_RACK_PATCH by DIN_RACK_ENTITIES.register("din_rack_patch", { -> DinRackPatchEntity() })
         val DIN_RACK_BATTERY by DIN_RACK_ENTITIES.register("din_rack_battery", { -> DinRackBatteryEntity() })
         val DIN_RACK_POWER_SUPPLY by DIN_RACK_ENTITIES.register("din_rack_power_supply", { -> DinRackPowerSupplyEntity() })
-        val DIN_RACK_PLC by DIN_RACK_ENTITIES.register("din_rack_plc", { -> DinRackPlcEntity() })
+        val DIN_RACK_PLC by DIN_RACK_ENTITIES.register("din_rack_plc", { -> DinRackPlcEntity(Items.DIN_RACK_PLC.defaultInstance) })
         val DIN_RACK_PLC_IO by DIN_RACK_ENTITIES.register("din_rack_plc_io", { -> DinRackPlcIOEntity() })
         val DIN_RACK_PLC_RELAY by DIN_RACK_ENTITIES.register("din_rack_plc_relay", { -> DinRackPlcRelayEntity() })
     }
 
+    object DataComponents {
+        internal val DATA_COMPONENTS: DeferredRegister.DataComponents =
+            DeferredRegister.createDataComponents(McRegistries.DATA_COMPONENT_TYPE, Digitalgrid.ID)
+
+        val PLC_COMPONENTS: DeferredHolder<DataComponentType<*>, DataComponentType<PlcComponents>> =
+            DATA_COMPONENTS.registerComponentType("plc_components") {
+                it.persistent(PlcComponents.CODEC).networkSynchronized(PlcComponents.STREAM_CODEC)
+            }
+    }
+
+    object PlcComponentTypes {
+        internal val PLC_COMPONENT_TYPES: DeferredRegister<PlcComponentRegistry.PlcComponentType> =
+            DeferredRegister.create(PlcComponentRegistry.KEY, Digitalgrid.ID)
+
+        // Component registry names deliberately match the item names so the item<->component id mapping is 1:1.
+        val WIRELESS_MODEM: DeferredHolder<PlcComponentRegistry.PlcComponentType, PlcComponentRegistry.PlcComponentType> =
+            PLC_COMPONENT_TYPES.register("plc_wireless_modem") { ->
+                PlcComponentRegistry.PlcComponentType(
+                    Lang.translate("item.digitalgrid.plc_wireless_modem").component(),
+                    { listOf(Items.WIRELESS_CIRCUIT, net.minecraft.world.item.Items.IRON_INGOT) },
+                    { PlcWirelessModemComponent(advanced = false) }
+                )
+            }
+
+        val ENDER_MODEM: DeferredHolder<PlcComponentRegistry.PlcComponentType, PlcComponentRegistry.PlcComponentType> =
+            PLC_COMPONENT_TYPES.register("plc_ender_modem") { ->
+                PlcComponentRegistry.PlcComponentType(
+                    Lang.translate("item.digitalgrid.plc_ender_modem").component(),
+                    { listOf(Items.WIRELESS_CIRCUIT, net.minecraft.world.item.Items.ENDER_PEARL) },
+                    { PlcWirelessModemComponent(advanced = true) }
+                )
+            }
+    }
+
     internal object Registries {
         fun register(bus: IEventBus) {
-            bus.addListener { event: NewRegistryEvent -> event.register(DinRackRegistry.REGISTRY) }
+            bus.addListener { event: NewRegistryEvent ->
+                event.register(DinRackRegistry.REGISTRY)
+                event.register(PlcComponentRegistry.REGISTRY)
+            }
             Blocks.BLOCKS.register(bus)
             Items.ITEMS.register(bus)
             BlockEntities.BLOCK_ENTITIES.register(bus)
             DinRackEntities.DIN_RACK_ENTITIES.register(bus)
+            PlcComponentTypes.PLC_COMPONENT_TYPES.register(bus)
+            DataComponents.DATA_COMPONENTS.register(bus)
             CREATIVE_MODE_TABS.register(bus)
         }
     }

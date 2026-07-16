@@ -9,6 +9,7 @@ import net.minecraft.network.chat.Component
 import net.minecraft.world.level.block.state.BlockState
 
 interface DinRackPlcComponent: Behavior {
+    /** The returned peripheral may only be handed to a computer after [onAttach] has run. */
     fun getPeripheral(): IPeripheral
 
     /** Client-side: goggle tooltip lines for this module. Return true if any were added. */

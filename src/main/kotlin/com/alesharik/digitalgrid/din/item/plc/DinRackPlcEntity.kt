@@ -1,5 +1,6 @@
 package com.alesharik.digitalgrid.din.item.plc
 
+import com.alesharik.digitalgrid.Digitalgrid
 import com.alesharik.digitalgrid.DigitalgridConfig
 import com.alesharik.digitalgrid.DigitalgridRegistry
 import com.alesharik.digitalgrid.client.PartialModels
@@ -9,6 +10,7 @@ import com.alesharik.digitalgrid.din.behavior.Behavior
 import com.alesharik.digitalgrid.din.behavior.digibus.DigibusModemBehavior
 import com.alesharik.digitalgrid.din.behavior.powergrid.PowerGridBehavior
 import com.alesharik.digitalgrid.din.behavior.powergrid.WorkDrawBehavior
+import com.alesharik.digitalgrid.din.item.plc.component.PlcComponentRegistry
 import com.alesharik.digitalgrid.infra.luaImpl
 import com.alesharik.digitalgrid.utils.Lang
 import com.alesharik.digitalgrid.utils.light.LightIndicator
@@ -51,21 +53,25 @@ import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
 import thedarkcolour.kotlinforforge.neoforge.kotlin.enumMapOf
 import java.util.stream.Stream
 
-class DinRackPlcEntity: DinRackEntity {
+class DinRackPlcEntity(stack: ItemStack): DinRackEntity {
     override val shape: VoxelShape = SHAPE
     override val terminalBoundingBox: Array<TerminalBoundingBox> = emptyArray()
     override val width: DINUnit = DINUnit(3)
 
     private val modemBehavior = DigibusModemBehavior()
     private val workDrawBehavior by lazy { WorkDrawBehavior.forBus(DigitalgridConfig.CONFIG.plc.currentDraw) }
-    private val computerBehavior by lazy { ComputerBehavior(workDrawBehavior, modemBehavior) }
+    private val computerBehavior by lazy { ComputerBehavior(workDrawBehavior, modemBehavior) { componentBehaviors } }
+
+    private var componentBehaviors: List<DinRackPlcComponent> = (stack.get(DigitalgridRegistry.DataComponents.PLC_COMPONENTS.get())?.ids ?: emptyList()).mapNotNull { id ->
+        val type = PlcComponentRegistry.REGISTRY.get(id)
+        if (type == null) {
+            Digitalgrid.LOGGER.warn("Unknown PLC component {}", id)
+            null
+        } else type.createComponent()
+    }
 
     override val behaviors: List<Behavior> by lazy {
-        listOf(
-            workDrawBehavior,
-            modemBehavior,
-            computerBehavior
-        )
+        listOf(workDrawBehavior, modemBehavior, computerBehavior) + componentBehaviors
     }
 
     override fun render(
@@ -82,7 +88,7 @@ class DinRackPlcEntity: DinRackEntity {
             .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
         WORK_LIGHTS[computerBehavior.workState]?.render(be, ms, bufferSource)
         (if (computerBehavior.actionLight) ACTION_LIGHT_ON else ACTION_LIGHT_OFF).render(be, ms, bufferSource)
-        behaviors.filterIsInstance<DinRackPlcComponent>().forEach { it.render(be, en, partialTicks, ms, bufferSource, light, overlay) }
+        componentBehaviors.forEach { it.render(be, en, partialTicks, ms, bufferSource, light, overlay) }
     }
 
     override fun useItemOn(
@@ -116,13 +122,16 @@ class DinRackPlcEntity: DinRackEntity {
         Lang.translate("goggles.state").style(ChatFormatting.GRAY)
             .space().add(computerBehavior.workState.text())
             .forGoggles(tooltip, 1)
-        behaviors.filterIsInstance<DinRackPlcComponent>().forEach { it.addToGoggleTooltip(tooltip, isPlayerSneaking) }
+        if (isPlayerSneaking) {
+            componentBehaviors.forEach { it.addToGoggleTooltip(tooltip, isPlayerSneaking) }
+        }
         return true
     }
 
     private class ComputerBehavior(
         private val workDrawBehavior: WorkDrawBehavior,
         private val modemBehavior: DigibusModemBehavior,
+        private val components: () -> List<DinRackPlcComponent>,
     ): PowerGridBehavior {
         /** Derived each server tick, synced to clients for the work light. */
         var workState = WorkState.OFF
@@ -195,15 +204,20 @@ class DinRackPlcEntity: DinRackEntity {
                 computer = c
                 // Built-in controls (action light, reboot, id) available to the program as the `plc` peripheral.
                 c.setPeripheral(ComputerSide.BACK, PlcPeripheral())
-                // Connect the computer to the PLC bus; component peripherals are already advertised there.
+                // Connect the computer to the digibus; peripherals of other bus modules are advertised there.
                 modemBehavior.attachTo(c, ComputerSide.BOTTOM, ctx)
-
-//                val sideStack = LinkedList(ComputerSide.entries).apply {
-//                    remove(ComputerSide.BACK)
-//                    remove(ComputerSide.BOTTOM)
-//                }
-//
-//
+                // Component peripherals on the remaining sides, in stored (attach) order.
+                val free = listOf(ComputerSide.TOP, ComputerSide.FRONT, ComputerSide.LEFT, ComputerSide.RIGHT)
+                val comps = components()
+                if (comps.size > free.size) {
+                    Digitalgrid.LOGGER.warn(
+                        "PLC at {} has {} components but only {} free sides; extras get no peripheral",
+                        ctx.pos, comps.size, free.size
+                    )
+                }
+                comps.take(free.size).forEachIndexed { i, comp ->
+                    c.setPeripheral(free[i], comp.getPeripheral())
+                }
             }
         }
 
