@@ -5,3 +5,4 @@
 - add DIN rack recipe
 - add PLC components - watchdog and modems
 - limit PLC storage size to 64 KiB
+- make PLC API global, instead of creating peripheral

@@ -11,13 +11,10 @@ import com.alesharik.digitalgrid.din.behavior.digibus.DigibusModemBehavior
 import com.alesharik.digitalgrid.din.behavior.powergrid.PowerGridBehavior
 import com.alesharik.digitalgrid.din.behavior.powergrid.WorkDrawBehavior
 import com.alesharik.digitalgrid.din.item.plc.component.PlcComponentRegistry
-import com.alesharik.digitalgrid.infra.luaImpl
 import com.alesharik.digitalgrid.utils.Lang
 import com.alesharik.digitalgrid.utils.light.LightIndicator
 import com.mojang.blaze3d.vertex.PoseStack
 import com.simibubi.create.foundation.render.RenderTypes
-import dan200.computercraft.api.lua.LuaFunction
-import dan200.computercraft.api.peripheral.IPeripheral
 import dan200.computercraft.core.computer.ComputerSide
 import dan200.computercraft.shared.ModRegistry
 import dan200.computercraft.shared.computer.core.ComputerFamily
@@ -200,15 +197,14 @@ class DinRackPlcEntity(stack: ItemStack): DinRackEntity {
             val props = ServerComputer.properties(id, ComputerFamily.ADVANCED)
                 .terminalSize(TerminalSize(TERM_WIDTH, TERM_HEIGHT))
                 .storageCapacity(DigitalgridConfig.CONFIG.plc.storageSize)
+                .addComponent(DinRackPlcComputerComponent.COMPONENT, PlcComponent())
             return ServerComputer(level, ctx.pos, props).also { c ->
                 c.register()
                 computer = c
-                // Built-in controls (action light, reboot, id) available to the program as the `plc` peripheral.
-                c.setPeripheral(ComputerSide.BACK, PlcPeripheral())
                 // Connect the computer to the digibus; peripherals of other bus modules are advertised there.
-                modemBehavior.attachTo(c, ComputerSide.BOTTOM, ctx)
+                modemBehavior.attachTo(c, ComputerSide.BACK, ctx)
                 // Component peripherals on the remaining sides, in stored (attach) order.
-                val free = listOf(ComputerSide.TOP, ComputerSide.FRONT, ComputerSide.LEFT, ComputerSide.RIGHT)
+                val free = listOf(ComputerSide.BOTTOM, ComputerSide.TOP, ComputerSide.FRONT, ComputerSide.LEFT, ComputerSide.RIGHT)
                 val comps = components()
                 if (comps.size > free.size) {
                     Digitalgrid.LOGGER.warn(
@@ -226,7 +222,7 @@ class DinRackPlcEntity(stack: ItemStack): DinRackEntity {
             }
         }
 
-        // --- called from the computer thread via PlcPeripheral (actionLight is @Volatile) ---
+        // --- called from the computer thread via PlcComponent (actionLight is @Volatile) ---
 
         override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
             actionLight = tag.getBoolean("ActionLight")
@@ -247,30 +243,14 @@ class DinRackPlcEntity(stack: ItemStack): DinRackEntity {
             actionLight = (b and ACTION_BIT) != 0
         }
 
-        inner class PlcPeripheral : IPeripheral {
-            override fun getType(): String = "plc"
-
-            /** Turn the action light on or off. */
-            @LuaFunction
-            fun setActionLight(on: Boolean) {
-                actionLight = on
-            }
-
-            @LuaFunction
-            fun getActionLight(): Boolean = actionLight
-
-            /** Reboot this controller's computer. */
-            @LuaFunction(mainThread = true)
-            fun reboot() = luaImpl {
-                computer?.reboot()
-            }
-
-            @LuaFunction
-            fun getRailVoltage(): Float = luaImpl {
-                workDrawBehavior.railVoltage?.value ?: 0.0f
-            }
-
-            override fun equals(other: IPeripheral?): Boolean = other === this
+        private inner class PlcComponent : DinRackPlcComputerComponent {
+            override var actionLight: Boolean
+                get() = this@ComputerBehavior.actionLight
+                set(value) {
+                    this@ComputerBehavior.actionLight = value
+                }
+            override val railVoltage: Float
+                get() = workDrawBehavior.railVoltage?.value ?: 0.0f
         }
     }
 

@@ -1,6 +1,8 @@
 package com.alesharik.digitalgrid
 
 import com.alesharik.digitalgrid.client.PartialModels
+import com.alesharik.digitalgrid.din.item.plc.DinRackPlcLuaAPI
+import dan200.computercraft.api.ComputerCraftAPI
 import dan200.computercraft.api.peripheral.PeripheralCapability
 import net.minecraft.client.Minecraft
 import net.neoforged.bus.api.SubscribeEvent
@@ -31,6 +33,7 @@ object Digitalgrid {
     init {
         DigitalgridRegistry.Registries.register(MOD_BUS)
         ModLoadingContext.get().activeContainer.registerConfig(ModConfig.Type.SERVER, DigitalgridConfig.SPEC)
+        ComputerCraftAPI.registerAPIFactory(DinRackPlcLuaAPI.Factory)
 
         runForDist(clientTarget = {
             PartialModels.init()
