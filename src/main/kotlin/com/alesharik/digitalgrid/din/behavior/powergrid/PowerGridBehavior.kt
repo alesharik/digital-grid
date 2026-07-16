@@ -1,13 +1,12 @@
 package com.alesharik.digitalgrid.din.behavior.powergrid
 
-import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.behavior.Behavior
 import net.minecraft.network.FriendlyByteBuf
 import org.patryk3211.powergrid.electricity.base.IElectricEntity
 import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 
 interface PowerGridBehavior: Behavior {
-    fun buildCircuit(ctx: DinRackEntity.CircuitContext) {}
+    fun buildCircuit(ctx: CircuitContext) {}
 
     /** Server-side only, called once per tick. */
     fun electricalTick(): TickResult = TickResult.NONE

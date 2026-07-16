@@ -1,6 +1,5 @@
 package com.alesharik.digitalgrid.din.behavior.powergrid
 
-import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.infra.unit.*
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
@@ -53,7 +52,7 @@ class BatteryBehavior(
             return Volt(source.positive.voltage - (source.negative?.voltage ?: 0.0))
         }
 
-    override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
+    override fun buildCircuit(ctx: PowerGridBehavior.CircuitContext) {
         val source = VoltageSourceCoupling(ctx.bus24V, ctx.busMinus, internalResistance.value)
         ctx.builder.add(source)
         coupling = source

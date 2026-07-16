@@ -1,7 +1,6 @@
 package com.alesharik.digitalgrid.din.behavior.powergrid
 
 import com.alesharik.digitalgrid.DigitalgridConfig
-import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.infra.unit.Ampere
 import com.alesharik.digitalgrid.infra.unit.Ohm
 import com.alesharik.digitalgrid.infra.unit.Volt
@@ -38,7 +37,7 @@ class RelayBehavior(
             return Volt(plus - minus)
         }
 
-        override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
+        override fun buildCircuit(ctx: PowerGridBehavior.CircuitContext) {
             bus24V = ctx.bus24V
             busMinus = ctx.busMinus
 

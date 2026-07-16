@@ -105,7 +105,7 @@ class DinRackPowerSupplyEntity: DinRackEntity {
         val amps: Ampere?
             get() = coupling?.stateValue?.coerceAtLeast(0.0)?.let(::Ampere)
 
-        override fun buildCircuit(ctx: DinRackEntity.CircuitContext) {
+        override fun buildCircuit(ctx: PowerGridBehavior.CircuitContext) {
             val out = ctx.builder.addInternalNode()
             // Secondary voltage = ratio * input voltage; ratio 0 keeps the output dead
             // until the first tick measures the input.

@@ -524,7 +524,6 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     private fun attachModule(placement: DinRackEntityPlacement) {
         val ctx = AttachContextImpl(placement.stack)
         placement.entity.behaviors.forEach { it.onAttach(ctx) }
-        placement.entity.onAttach(ModuleContextImpl(placement.stack))
     }
 
     /** Server-side only. Returns false if the interval is occupied or out of bounds. */
@@ -556,7 +555,6 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val oldTerminals = globalTerminalMap(entities, overhang)
         if (mEntities?.remove(placement) != true) return null
         placement.entity.behaviors.forEach { it.onDetach() }
-        placement.entity.onDetach()
         remapConnections(oldTerminals)
         if (placement.u.value + placement.entity.width.value > RACK_WIDTH) {
             neighborRack(plusU)?.clearOverhang()
@@ -627,7 +625,6 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         super.invalidate()
         mEntities?.forEach {
             it.entity.behaviors.forEach { it.onDetach() }
-            it.entity.onDetach()
         }
     }
 
@@ -737,14 +734,12 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
             override fun writeToSync(buffer: FriendlyByteBuf) {
                 entities.forEach {
                     it.entity.behaviors.filterIsInstance<PowerGridBehavior>().forEach { e -> e.writeSync(buffer) }
-                    it.entity.writeSync(buffer)
                 }
             }
 
             override fun readFromSync(buffer: FriendlyByteBuf) {
                 entities.forEach {
                     it.entity.behaviors.filterIsInstance<PowerGridBehavior>().forEach { e -> e.readSync(buffer) }
-                    it.entity.readSync(buffer)
                 }
             }
         })
@@ -760,11 +755,6 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
                     PowerGridBehavior.TickResult.SAVE_AND_SYNC -> { save = true; sync = true }
                     PowerGridBehavior.TickResult.NONE -> {}
                 }
-            }
-            when (placed.entity.electricalTick()) {
-                DinRackEntity.TickResult.SAVE -> save = true
-                DinRackEntity.TickResult.SAVE_AND_SYNC -> { save = true; sync = true }
-                DinRackEntity.TickResult.NONE -> {}
             }
         }
         if (save) setChanged()
@@ -789,7 +779,6 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         // circuit on the client (its "Rebuild" sync flag) and must see the new module list.
         mEntities?.forEach {
             it.entity.behaviors.forEach { it.onDetach() }
-            it.entity.onDetach()
         }
         overhang = if (tag.contains("Overhang", Tag.TAG_COMPOUND.toInt())) {
             OverhangGhost.read(tag.getCompound("Overhang")).also {
@@ -833,7 +822,6 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
                     val dat = cmp.getCompound("C$idx")
                     behaviour.read(dat, registries, clientPacket)
                 }
-                entity.read(cmp, registries, clientPacket)
             }
             val u = DINUnit(entry.getInt("U"))
             if (!canStore(rebuilt, overhang, u, entity.width)) {
@@ -859,7 +847,6 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
                 behaviour.write(behaviourTag, registries, clientPacket)
                 if (!behaviourTag.isEmpty) data.put("C$idx", behaviourTag)
             }
-            placed.entity.write(data, registries, clientPacket)
             if (!data.isEmpty) entry.put("Data", data)
             list.add(entry)
         }
@@ -890,19 +877,6 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val entity: DinRackEntity,
         val stack: ItemStack,
     )
-
-    private inner class ModuleContextImpl(override val stack: ItemStack) : DinRackEntity.ModuleContext {
-        override val level: Level
-            get() = this@DinRackBlockEntity.level ?: error("DIN rack module accessed a null level")
-        override val pos: BlockPos
-            get() = worldPosition
-        override val blockEntity: BlockEntity
-            get() = this@DinRackBlockEntity
-
-        override fun markChanged() = setChanged()
-
-        override fun requestSync() = sendData()
-    }
 
     private inner class AttachContextImpl(override val stack: ItemStack) : Behavior.AttachContext {
         override val level: Level
@@ -937,7 +911,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         override val builder: IElectricEntity.CircuitBuilder,
         override val bus24V: FloatingNode,
         override val busMinus: FloatingNode,
-    ): DinRackEntity.CircuitContext {
+    ): PowerGridBehavior.CircuitContext {
         override fun terminalNode(idx: Int): FloatingNode {
             if (idx !in 0..<terminalCount) {
                 throw IllegalArgumentException("Could not select terminal node $idx, max nodes are $terminalCount")
