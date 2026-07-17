@@ -54,6 +54,18 @@ object DigitalgridRegistry {
                 output.accept(Items.DIN_RACK_BATTERY)
                 output.accept(Items.DIN_RACK_POWER_SUPPLY)
                 output.accept(Items.DIN_RACK_PLC)
+                output.accept(Items.DIN_RACK_PLC.defaultInstance.apply {
+                    set(DataComponents.PLC_COMPONENTS.get(), PlcComponents(listOf(
+                        PlcComponentTypes.WATCHDOG.id,
+                        PlcComponentTypes.WIRELESS_MODEM.id
+                    )))
+                })
+                output.accept(Items.DIN_RACK_PLC.defaultInstance.apply {
+                    set(DataComponents.PLC_COMPONENTS.get(), PlcComponents(listOf(
+                        PlcComponentTypes.WATCHDOG.id,
+                        PlcComponentTypes.ENDER_MODEM.id
+                    )))
+                })
                 output.accept(Items.DIN_RACK_PLC_IO)
                 output.accept(Items.DIN_RACK_PLC_RELAY)
                 output.accept(Items.PLC_PROGRAMMER)

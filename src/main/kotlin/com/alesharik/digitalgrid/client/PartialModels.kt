@@ -19,6 +19,8 @@ object PartialModels {
     val DIN_PLC_IO_LIGHTS = Array(4) { dinModel("plc_io_light_$it") }
     val DIN_PLC_RELAY = dinModel("plc_relay")
     val DIN_PLC_RELAY_LIGHT = dinModel("plc_relay_light")
+    val DIN_PLC_ENDER_MODEM = dinModel("plc_ender_modem")
+    val DIN_PLC_WIRELESS_MODEM = dinModel("plc_wireless_modem")
 
     val WATCHDOG_TIMER_LIGHT_WORK = blockModel("watchdog_timer_light_work")
     val WATCHDOG_TIMER_LIGHT_ACTIVITY = blockModel("watchdog_timer_light_activity")

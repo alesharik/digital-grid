@@ -26,7 +26,7 @@ class DinRackPlcItem(props: Properties) : DinRackItem(props, DinRackPlcEntity::c
             tooltip.add(Component.translatable("digitalgrid.tooltip.plc_components").withStyle(ChatFormatting.GRAY))
             for (id in components.ids) {
                 val name = PlcComponentRegistry.REGISTRY.get(id)?.displayName ?: Component.literal(id.toString())
-                tooltip.add(Component.literal(" - ").append(name).withStyle(ChatFormatting.DARK_GRAY))
+                tooltip.add(Component.literal("- ").append(name).withStyle(ChatFormatting.DARK_GRAY))
             }
         }
 
