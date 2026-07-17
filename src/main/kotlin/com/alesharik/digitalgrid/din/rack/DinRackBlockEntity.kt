@@ -100,9 +100,41 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         proxyCache = null
         dropStaleClientConnections()
         level?.sendBlockUpdated(worldPosition, blockState, blockState, Block.UPDATE_ALL)
-        electricBehaviour.rebuildCircuit(true)
+        rebuildCircuitSafely()
         refreshAllBridges()
         neighborRack(plusU.opposite)?.refreshAllBridges()
+    }
+
+    /**
+     * Power Grid 0.5.5.x has no null guard in `WorldNetworks.addAndMigrateNode` (fixed upstream in
+     * PG commit 1e1f21d8, unreleased for 1.21.1). `rebuildCircuit(true)` recreates this rack's
+     * external-node identities, so Power Grid re-resolves any player-wire transmission lines
+     * attached to them and can trip over a transient null node, throwing NullPointerException.
+     *
+     * We try the wire-preserving rebuild first; if Power Grid throws this NPE we detach the
+     * attached wire entities and retry once. Player wires are lost only in this crash case — PG's
+     * own `CircuitBoardBlockEntity` drops them unconditionally on every external-count change, so
+     * this is strictly more wire-preserving than the upstream pattern.
+     */
+    private fun rebuildCircuitSafely() {
+        try {
+            electricBehaviour.rebuildCircuit(true)
+        } catch (e: NullPointerException) {
+            Digitalgrid.LOGGER.error(
+                "PowerGrid threw while rebuilding the circuit at {} (known addAndMigrateNode null-guard bug, " +
+                    "fixed upstream but unreleased for MC 1.21.1); detaching attached wires and retrying once",
+                worldPosition, e
+            )
+            // dropWire synchronously detaches the transmission-line parts that makeWire created
+            // mid-rebuild — those are what Power Grid then failed to re-resolve. breakConnections
+            // additionally kills the wire entities and refunds their items. The map clear runs on
+            // both sides because breakConnections only clears it on the server, so the retry's
+            // makeWire() has nothing to recreate and nodeHolderAdded finds nothing to resolve.
+            electricBehaviour.connections.values.flatMap { it.toList() }.forEach { it.dropWire() }
+            electricBehaviour.breakConnections()
+            electricBehaviour.connections.clear()
+            electricBehaviour.rebuildCircuit(true)
+        }
     }
 
     /** World direction of increasing DIN unit; must agree with [DinRackBlock.hitToUnit]. */
@@ -429,7 +461,25 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
     }
 
     override fun initialize() {
-        super.initialize()
+        // ElectricBehaviour.initialize (invoked by super) runs GlobalElectricNetworks.nodeHolderAdded,
+        // which can throw the PG addAndMigrateNode null-guard NPE when a player-wire transmission line
+        // routes through this rack toward a block whose node is stale. The rack carries no other
+        // behaviours, so catching here leaves nothing uninitialized; recover by severing this rack's
+        // wires (so the line no longer routes through it) and finishing the init PG had started.
+        try {
+            super.initialize()
+        } catch (e: NullPointerException) {
+            Digitalgrid.LOGGER.error(
+                "PowerGrid threw while initializing the DIN rack at {} (known addAndMigrateNode null-guard bug, " +
+                    "fixed upstream but unreleased for MC 1.21.1); severing attached wires and finishing init",
+                worldPosition, e
+            )
+            electricBehaviour.connections.values.flatMap { it.toList() }.forEach { it.dropWire() }
+            electricBehaviour.breakConnections()
+            electricBehaviour.connections.clear()
+            GlobalElectricNetworks.nodeHolderAdded(electricBehaviour)
+            electricBehaviour.unpause()
+        }
         validateOverhang()
         validateSpanning()
         refreshAllBridges()
