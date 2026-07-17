@@ -194,7 +194,7 @@ object DigitalgridRegistry {
         val WIRELESS_MODEM: DeferredHolder<PlcComponentRegistry.PlcComponentType, PlcComponentRegistry.PlcComponentType> =
             PLC_COMPONENT_TYPES.register("plc_wireless_modem") { ->
                 PlcComponentRegistry.PlcComponentType(
-                    Lang.translate("item.digitalgrid.plc_wireless_modem").component(),
+                    Lang.translateItem("plc_wireless_modem"),
                     { listOf(Items.WIRELESS_CIRCUIT, net.minecraft.world.item.Items.IRON_INGOT) },
                     { PlcWirelessModemComponent(advanced = false) }
                 )
@@ -203,7 +203,7 @@ object DigitalgridRegistry {
         val ENDER_MODEM: DeferredHolder<PlcComponentRegistry.PlcComponentType, PlcComponentRegistry.PlcComponentType> =
             PLC_COMPONENT_TYPES.register("plc_ender_modem") { ->
                 PlcComponentRegistry.PlcComponentType(
-                    Lang.translate("item.digitalgrid.plc_ender_modem").component(),
+                    Lang.translateItem("plc_ender_modem"),
                     { listOf(Items.WIRELESS_CIRCUIT, net.minecraft.world.item.Items.ENDER_PEARL) },
                     { PlcWirelessModemComponent(advanced = true) }
                 )
@@ -212,7 +212,7 @@ object DigitalgridRegistry {
         val WATCHDOG: DeferredHolder<PlcComponentRegistry.PlcComponentType, PlcComponentRegistry.PlcComponentType> =
             PLC_COMPONENT_TYPES.register("plc_watchdog") { ->
                 PlcComponentRegistry.PlcComponentType(
-                    Lang.translate("item.digitalgrid.plc_watchdog").component(),
+                    Lang.translateItem("plc_watchdog"),
                     { listOf(ModdedItems.IRON_WIRE.get(), net.minecraft.world.item.Items.CLOCK) },
                     { PlcWatchdogComponent() }
                 )
