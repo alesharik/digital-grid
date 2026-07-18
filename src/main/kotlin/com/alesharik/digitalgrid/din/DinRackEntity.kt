@@ -6,6 +6,7 @@ import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
@@ -48,4 +49,16 @@ interface DinRackEntity {
 
     /** Client-side: goggle tooltip lines for this module. Return true if any were added. */
     fun addToGoggleTooltip(tooltip: MutableList<Component>, isPlayerSneaking: Boolean): Boolean = false
+
+    /**
+     * Empty-hand click on this module (delegated from the block). Default is pass,
+     * but modules can override (e.g., drive eject).
+     */
+    fun useWithoutItem(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hit: BlockHitResult
+    ): InteractionResult = InteractionResult.PASS
 }

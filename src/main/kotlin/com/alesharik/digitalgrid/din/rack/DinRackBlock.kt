@@ -88,17 +88,26 @@ class DinRackBlock: ElectricBlock(
         player: Player,
         hit: BlockHitResult
     ): InteractionResult {
+        val be = getBlockEntityOptional(level, pos).orElse(null)
+            ?: return super.useWithoutItem(state, level, pos, player, hit)
+        val u = hitToUnit(state, pos, hit)
+        val module = be.resolvedModuleAt(u)
+            ?: return super.useWithoutItem(state, level, pos, player, hit)
+        if (level.isClientSide) return InteractionResult.sidedSuccess(true)
+
+        // Sneak + empty hand: remove the whole module
         if (player.isSecondaryUseActive && player.mainHandItem.isEmpty) {
-            val be = getBlockEntityOptional(level, pos).orElse(null)
-                ?: return super.useWithoutItem(state, level, pos, player, hit)
-            val u = hitToUnit(state, pos, hit)
-            val resolved = be.resolvedModuleAt(u)
-                ?: return super.useWithoutItem(state, level, pos, player, hit)
-            if (level.isClientSide) return InteractionResult.sidedSuccess(true)
-            val removed = resolved.rack.removeModuleAt(resolved.placement.u) ?: return InteractionResult.FAIL
+            val removed = module.rack.removeModuleAt(module.placement.u)
+                ?: return InteractionResult.FAIL
             player.inventory.placeItemBackInInventory(removed.stack)
             return InteractionResult.sidedSuccess(false)
         }
+
+        val result = module.placement.entity.useWithoutItem(state, level, pos, player, hit)
+        if (result != InteractionResult.PASS) {
+            return result
+        }
+
         return super.useWithoutItem(state, level, pos, player, hit)
     }
 
