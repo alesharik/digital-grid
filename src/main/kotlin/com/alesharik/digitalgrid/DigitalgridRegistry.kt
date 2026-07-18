@@ -1,17 +1,12 @@
 package com.alesharik.digitalgrid
 
-import com.alesharik.digitalgrid.block.WatchdogTimerBlock
-import com.alesharik.digitalgrid.block.WatchdogTimerBlockEntity
-import com.alesharik.digitalgrid.block.WatchdogTimerBlockEntityRenderer
+import com.alesharik.digitalgrid.block.*
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.DinRackRegistry
 import com.alesharik.digitalgrid.din.item.*
 import com.alesharik.digitalgrid.din.item.plc.DinRackPlcEntity
 import com.alesharik.digitalgrid.din.item.plc.DinRackPlcItem
-import com.alesharik.digitalgrid.din.item.plc.component.PlcComponentRegistry
-import com.alesharik.digitalgrid.din.item.plc.component.PlcComponents
-import com.alesharik.digitalgrid.din.item.plc.component.PlcWatchdogComponent
-import com.alesharik.digitalgrid.din.item.plc.component.PlcWirelessModemComponent
+import com.alesharik.digitalgrid.din.item.plc.component.*
 import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer
@@ -58,13 +53,15 @@ object DigitalgridRegistry {
                 output.accept(Items.DIN_RACK_PLC.defaultInstance.apply {
                     set(DataComponents.PLC_COMPONENTS.get(), PlcComponents(listOf(
                         PlcComponentTypes.WATCHDOG.id,
-                        PlcComponentTypes.WIRELESS_MODEM.id
+                        PlcComponentTypes.WIRELESS_MODEM.id,
+                        PlcComponentTypes.BEEPER.id
                     )))
                 })
                 output.accept(Items.DIN_RACK_PLC.defaultInstance.apply {
                     set(DataComponents.PLC_COMPONENTS.get(), PlcComponents(listOf(
                         PlcComponentTypes.WATCHDOG.id,
-                        PlcComponentTypes.ENDER_MODEM.id
+                        PlcComponentTypes.ENDER_MODEM.id,
+                        PlcComponentTypes.BEEPER.id
                     )))
                 })
                 output.accept(Items.DIN_RACK_PLC_IO)
@@ -223,6 +220,15 @@ object DigitalgridRegistry {
                     Lang.translateItem("plc_watchdog"),
                     { listOf(ModdedItems.IRON_WIRE.get(), net.minecraft.world.item.Items.CLOCK) },
                     { PlcWatchdogComponent() }
+                )
+            }
+
+        val BEEPER: DeferredHolder<PlcComponentRegistry.PlcComponentType, PlcComponentRegistry.PlcComponentType> =
+            PLC_COMPONENT_TYPES.register("plc_beeper") { ->
+                PlcComponentRegistry.PlcComponentType(
+                    Lang.translateItem("plc_beeper"),
+                    { listOf(ModdedItems.IRON_WIRE.get(), net.minecraft.world.item.Items.NOTE_BLOCK) },
+                    { PlcBeeperComponent() }
                 )
             }
     }
