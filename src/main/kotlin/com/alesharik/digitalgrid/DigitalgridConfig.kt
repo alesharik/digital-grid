@@ -72,8 +72,16 @@ object DigitalgridConfig {
             },
             plcSpeaker = block("plcSpeaker") {
                 Config.PlcSpeaker(
-                    currentDrawSpec = comment("PLC relay module constant current draw from the internal 24V bus, in amperes (at nominal voltage)")
+                    currentDrawSpec = comment("PLC module constant current draw from the internal 24V bus, in amperes (at nominal voltage)")
                         .defineInRange("currentDraw", 0.1, 0.001, 100.0),
+                )
+            },
+            plcDrive = block("plcDrive") {
+                Config.PlcDrive(
+                    currentDrawSpec = comment("PLC module constant current draw from the internal 24V bus, in amperes (at nominal voltage)")
+                        .defineInRange("currentDraw", 0.05, 0.001, 100.0),
+                    diskCurrentDrawSpec = comment("Constant current draw when disk is present from the internal 24V bus, in amperes (at nominal voltage)")
+                        .defineInRange("diskCurrentDraw", 0.2, 0.001, 100.0),
                 )
             }
         )
@@ -87,6 +95,7 @@ object DigitalgridConfig {
         val plcIo: PlcIo,
         val plcRelay: PlcRelay,
         val plcSpeaker: PlcSpeaker,
+        val plcDrive: PlcDrive,
     ) {
         data class Bus(
             private val voltageSpec: ModConfigSpec.DoubleValue,
@@ -212,9 +221,25 @@ object DigitalgridConfig {
             private val currentDrawSpec: ModConfigSpec.DoubleValue,
         ) {
             /**
-             * PLC relay module constant current draw from the internal 24V bus, in amperes (at nominal voltage)
+             * PLC module constant current draw from the internal 24V bus, in amperes (at nominal voltage)
              */
             val currentDraw by currentDrawSpec.asVar(::Ampere)
+        }
+
+
+        data class PlcDrive(
+            private val currentDrawSpec: ModConfigSpec.DoubleValue,
+            private val diskCurrentDrawSpec: ModConfigSpec.DoubleValue,
+        ) {
+            /**
+             * PLC module constant current draw from the internal 24V bus, in amperes (at nominal voltage)
+             */
+            val currentDraw by currentDrawSpec.asVar(::Ampere)
+
+            /**
+             * Constant current draw when disk is present from the internal 24V bus, in amperes (at nominal voltage)
+             */
+            val diskCurrentDraw by diskCurrentDrawSpec.asVar(::Ampere)
         }
     }
 }

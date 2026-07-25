@@ -40,7 +40,7 @@ class DinRackPlcSpeakerEntity : DinRackEntity {
     private val peripheral = Peripheral()
     private val digibusBehavior = DigibusPeripheralBehavior(peripheral)
     private val workDrawBehavior by lazy { WorkDrawBehavior.forBus(DigitalgridConfig.CONFIG.plcSpeaker.currentDraw) }
-    override val behaviors: List<Behavior> = listOf(digibusBehavior, peripheral, workDrawBehavior)
+    override val behaviors: List<Behavior> by lazy { listOf(digibusBehavior, peripheral, workDrawBehavior) }
 
     override fun render(
         be: BlockState,

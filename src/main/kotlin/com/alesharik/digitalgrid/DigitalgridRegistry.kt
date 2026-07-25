@@ -66,6 +66,8 @@ object DigitalgridRegistry {
                 })
                 output.accept(Items.DIN_RACK_PLC_IO)
                 output.accept(Items.DIN_RACK_PLC_RELAY)
+                output.accept(Items.DIN_RACK_PLC_SPEAKER)
+                output.accept(Items.DIN_RACK_PLC_DRIVE)
                 output.accept(Items.PLC_PROGRAMMER)
                 output.accept(Items.PLASTIC)
                 output.accept(Items.MICROPROCESSOR)
@@ -158,6 +160,12 @@ object DigitalgridRegistry {
                 DinRackPlcSpeakerEntity::class.java
             )
         })
+        val DIN_RACK_PLC_DRIVE by ITEMS.register("din_rack_plc_drive", { ->
+            DinRackItem(
+                Item.Properties(),
+                DinRackPlcDriveEntity::class.java
+            )
+        })
         val PLC_PROGRAMMER by ITEMS.register("plc_programmer", { -> Item(Item.Properties()) })
 
         val PLASTIC by ITEMS.register("plastic", { -> Item(Item.Properties()) })
@@ -179,6 +187,7 @@ object DigitalgridRegistry {
         val DIN_RACK_PLC_IO by DIN_RACK_ENTITIES.register("din_rack_plc_io", { -> DinRackPlcIOEntity() })
         val DIN_RACK_PLC_RELAY by DIN_RACK_ENTITIES.register("din_rack_plc_relay", { -> DinRackPlcRelayEntity() })
         val DIN_RACK_PLC_SPEAKER by DIN_RACK_ENTITIES.register("din_rack_plc_speaker", { -> DinRackPlcSpeakerEntity() })
+        val DIN_RACK_PLC_DRIVE by DIN_RACK_ENTITIES.register("din_rack_plc_drive", { -> DinRackPlcDriveEntity() })
     }
 
     object DataComponents {

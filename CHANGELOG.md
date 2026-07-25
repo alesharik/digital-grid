@@ -11,3 +11,4 @@
 - add recipe for battery module
 - add speaker module
 - add beeper component
+- add PLC drive module

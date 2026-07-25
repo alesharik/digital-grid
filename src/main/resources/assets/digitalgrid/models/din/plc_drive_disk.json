@@ -1,0 +1,33 @@
+{
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"textures": {
+		"0": "digitalgrid:block/din/plc_drive_disk",
+		"particle": "digitalgrid:block/din/plc_drive_disk"
+	},
+	"elements": [
+		{
+			"from": [1, 7, 9],
+			"to": [2, 13, 12],
+			"rotation": {"angle": 0, "axis": "y", "origin": [0, 7, 10]},
+			"faces": {
+				"north": {"uv": [0, 6, 1, 12], "texture": "#0"},
+				"east": {"uv": [0, 0, 3, 6], "texture": "#0"},
+				"south": {"uv": [6, 0, 7, 6], "texture": "#0"},
+				"west": {"uv": [3, 0, 6, 6], "texture": "#0"},
+				"up": {"uv": [2, 9, 1, 6], "texture": "#0"},
+				"down": {"uv": [3, 6, 2, 9], "texture": "#0"}
+			}
+		}
+	],
+	"display": {},
+	"groups": [
+		{
+			"name": "VoxelShapes",
+			"origin": [8, 8, 8],
+			"scope": 0,
+			"color": 0,
+			"children": [0]
+		}
+	]
+}
