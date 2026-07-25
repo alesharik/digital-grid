@@ -52,5 +52,6 @@
   "digitalgrid.tooltip.plc_components": "Installed components:",
   "digitalgrid.goggles.plc_component.wireless_modem": "Wireless Modem",
   "digitalgrid.goggles.plc_component.ender_modem": "Ender Modem",
-  "digitalgrid.goggles.plc_component.watchdog": "Watchdog"
+  "digitalgrid.goggles.plc_component.watchdog": "Watchdog",
+  "digitalgrid.goggles.plc_component.beeper": "Beeper"
 }
