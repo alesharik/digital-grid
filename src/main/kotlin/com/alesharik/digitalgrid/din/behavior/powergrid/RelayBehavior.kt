@@ -1,12 +1,14 @@
 package com.alesharik.digitalgrid.din.behavior.powergrid
 
 import com.alesharik.digitalgrid.DigitalgridConfig
+import com.alesharik.digitalgrid.din.behavior.Behavior
 import com.alesharik.digitalgrid.infra.unit.Ampere
 import com.alesharik.digitalgrid.infra.unit.Ohm
 import com.alesharik.digitalgrid.infra.unit.Volt
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.FriendlyByteBuf
+import org.patryk3211.powergrid.collections.ModdedSoundEvents
 import org.patryk3211.powergrid.electricity.sim.SwitchedWire
 import org.patryk3211.powergrid.electricity.sim.node.FloatingNode
 
@@ -15,12 +17,15 @@ class RelayBehavior(
     val terminal2: Int,
     val resistance: Ohm,
     private val minVoltage: Volt = DigitalgridConfig.CONFIG.bus.minVoltage,
-): PowerGridBehavior {
+) : PowerGridBehavior {
     private var bus24V: FloatingNode? = null
     private var busMinus: FloatingNode? = null
 
     private var contact: SwitchedWire? = null
     private var coil: SwitchedWire? = null
+
+    /** Cached attach context, used to reach level/pos for playing the relay click sound. */
+    private var ctx: Behavior.AttachContext? = null
 
     /** Last [commanded] value persisted, to request a save only when it changes. */
     private var persistedCommand = false
@@ -37,11 +42,24 @@ class RelayBehavior(
             return Volt(plus - minus)
         }
 
-        override fun buildCircuit(ctx: PowerGridBehavior.CircuitContext) {
-            bus24V = ctx.bus24V
-            busMinus = ctx.busMinus
+    override fun onAttach(ctx: Behavior.AttachContext) {
+        this.ctx = ctx
+    }
 
-        contact = ctx.builder.connectSwitch(CONTACT_RESISTANCE, ctx.terminalNode(terminal1), ctx.terminalNode(terminal2), closed)
+    override fun onDetach(removed: Boolean) {
+        ctx = null
+    }
+
+    override fun buildCircuit(ctx: PowerGridBehavior.CircuitContext) {
+        bus24V = ctx.bus24V
+        busMinus = ctx.busMinus
+
+        contact = ctx.builder.connectSwitch(
+            CONTACT_RESISTANCE,
+            ctx.terminalNode(terminal1),
+            ctx.terminalNode(terminal2),
+            closed
+        )
         // Coil load across the rail, drawn only while commanded on (R = V / I at nominal).
         coil = ctx.builder.connectSwitch(resistance.value, ctx.bus24V, ctx.busMinus, commanded)
     }
@@ -51,7 +69,10 @@ class RelayBehavior(
         val coil = coil ?: return PowerGridBehavior.TickResult.NONE
         val v = railVoltage ?: return PowerGridBehavior.TickResult.NONE
         val cmd = commanded
-        if (coil.state != cmd) coil.state = cmd
+        if (coil.state != cmd) {
+            coil.state = cmd
+            playClick()
+        }
         closed = cmd && v >= if (closed) minVoltage * 0.9 else minVoltage
         if (contact.state != closed) contact.state = closed
 
@@ -63,6 +84,14 @@ class RelayBehavior(
         } else {
             PowerGridBehavior.TickResult.NONE
         }
+    }
+
+    /** Reuses Power Grid's relay clicking sound; pitch mirrors the new contact state. */
+    private fun playClick() {
+        val c = ctx ?: return
+        // electricalTick is server-only already; this is belt-and-braces.
+        if (c.level.isClientSide) return
+        ModdedSoundEvents.RELAY_CLICK.playOnServer(c.level, c.pos, CLICK_VOLUME, if (closed) 2.0f else 1.9f)
     }
 
     override fun read(tag: CompoundTag, registries: HolderLookup.Provider, clientPacket: Boolean) {
@@ -86,6 +115,7 @@ class RelayBehavior(
 
     companion object {
         private const val CONTACT_RESISTANCE = 0.01f
+        private const val CLICK_VOLUME = 0.75f
 
         fun forBus(
             terminal1: Int,
