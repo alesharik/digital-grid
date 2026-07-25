@@ -1,10 +1,12 @@
 package com.alesharik.digitalgrid.din.item
 
+import com.alesharik.digitalgrid.DigitalgridConfig
 import com.alesharik.digitalgrid.client.PartialModels
 import com.alesharik.digitalgrid.din.DINUnit
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.behavior.Behavior
 import com.alesharik.digitalgrid.din.behavior.digibus.DigibusPeripheralBehavior
+import com.alesharik.digitalgrid.din.behavior.powergrid.WorkDrawBehavior
 import com.alesharik.digitalgrid.utils.Lang
 import com.mojang.blaze3d.vertex.PoseStack
 import com.simibubi.create.foundation.render.RenderTypes
@@ -37,7 +39,8 @@ class DinRackPlcSpeakerEntity : DinRackEntity {
 
     private val peripheral = Peripheral()
     private val digibusBehavior = DigibusPeripheralBehavior(peripheral)
-    override val behaviors: List<Behavior> = listOf(digibusBehavior, peripheral)
+    private val workDrawBehavior by lazy { WorkDrawBehavior.forBus(DigitalgridConfig.CONFIG.plcSpeaker.currentDraw) }
+    override val behaviors: List<Behavior> = listOf(digibusBehavior, peripheral, workDrawBehavior)
 
     override fun render(
         be: BlockState,

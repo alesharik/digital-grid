@@ -69,6 +69,12 @@ object DigitalgridConfig {
                     minVoltageSpec = comment("Minimum voltage for coil to work")
                         .defineInRange("minVoltage", 16.0, 1.0, 60.0)
                 )
+            },
+            plcSpeaker = block("plcSpeaker") {
+                Config.PlcSpeaker(
+                    currentDrawSpec = comment("PLC relay module constant current draw from the internal 24V bus, in amperes (at nominal voltage)")
+                        .defineInRange("currentDraw", 0.1, 0.001, 100.0),
+                )
             }
         )
     }
@@ -80,6 +86,7 @@ object DigitalgridConfig {
         val plc: Plc,
         val plcIo: PlcIo,
         val plcRelay: PlcRelay,
+        val plcSpeaker: PlcSpeaker,
     ) {
         data class Bus(
             private val voltageSpec: ModConfigSpec.DoubleValue,
@@ -199,6 +206,15 @@ object DigitalgridConfig {
              * Minimum voltage for coil to work
              */
             val minVoltage by minVoltageSpec.asVar(::Volt)
+        }
+
+        data class PlcSpeaker(
+            private val currentDrawSpec: ModConfigSpec.DoubleValue,
+        ) {
+            /**
+             * PLC relay module constant current draw from the internal 24V bus, in amperes (at nominal voltage)
+             */
+            val currentDraw by currentDrawSpec.asVar(::Ampere)
         }
     }
 }
