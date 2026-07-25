@@ -14,7 +14,7 @@ class DigibusWireBehavior : DigibusBehavior {
         }
     }
 
-    override fun onDetach() {
+    override fun onDetach(removed: Boolean) {
         wire?.remove()
         wire = null
     }

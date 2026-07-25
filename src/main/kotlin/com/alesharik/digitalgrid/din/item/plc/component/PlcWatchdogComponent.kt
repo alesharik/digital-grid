@@ -34,7 +34,7 @@ class PlcWatchdogComponent: DinRackPlcComponent {
         this.computer = computer
     }
 
-    override fun onDetach() {
+    override fun onDetach(removed: Boolean) {
         ctx = null
         computer = null
     }

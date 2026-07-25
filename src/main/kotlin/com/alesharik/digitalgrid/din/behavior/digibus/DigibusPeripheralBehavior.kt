@@ -30,7 +30,7 @@ class DigibusPeripheralBehavior(
         }
     }
 
-    override fun onDetach() {
+    override fun onDetach(removed: Boolean) {
         wire?.remove()
         wire = null
     }

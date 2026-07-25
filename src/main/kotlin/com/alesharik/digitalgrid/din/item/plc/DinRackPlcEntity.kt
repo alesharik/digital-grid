@@ -152,7 +152,7 @@ class DinRackPlcEntity(stack: ItemStack): DinRackEntity {
             context = ctx
         }
 
-        override fun onDetach() {
+        override fun onDetach(removed: Boolean) {
             computer?.close()
             computer = null
             context = null

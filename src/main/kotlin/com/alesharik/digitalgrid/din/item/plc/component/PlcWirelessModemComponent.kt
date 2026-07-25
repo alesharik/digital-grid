@@ -31,7 +31,7 @@ class PlcWirelessModemComponent(private val advanced: Boolean) : DinRackPlcCompo
         context = ctx
     }
 
-    override fun onDetach() {
+    override fun onDetach(removed: Boolean) {
         // Deliberately do NOT null out context here — the computer thread may still touch the
         // peripheral while the computer is closing down after removal.
         peripheral.removed()

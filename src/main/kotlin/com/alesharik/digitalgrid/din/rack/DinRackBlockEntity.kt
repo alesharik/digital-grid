@@ -604,7 +604,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         val placement = moduleAt(u) ?: return null
         val oldTerminals = globalTerminalMap(entities, overhang)
         if (mEntities?.remove(placement) != true) return null
-        placement.entity.behaviors.forEach { it.onDetach() }
+        placement.entity.behaviors.forEach { it.onDetach(true) }
         remapConnections(oldTerminals)
         if (placement.u.value + placement.entity.width.value > RACK_WIDTH) {
             neighborRack(plusU)?.clearOverhang()
@@ -621,7 +621,10 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
      */
     fun dropModulesOnBreak() {
         val lvl = level ?: return
-        entities.forEach { Block.popResource(lvl, worldPosition, it.stack) }
+        entities.forEach {
+            it.entity.behaviors.forEach { behavior -> behavior.onDetach(true) }
+            Block.popResource(lvl, worldPosition, it.stack)
+        }
         if (entities.any { it.u.value + it.entity.width.value > RACK_WIDTH }) {
             neighborRack(plusU)?.clearOverhang()
         }
@@ -671,10 +674,11 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         // Create's SmartBlockEntity.setRemoved() calls invalidate() on BOTH block break and chunk
         // unload, whereas remove() is skipped on chunk unload — so release module transient resources
         // here (e.g. close a PLC's ServerComputer, so it can't linger and get duplicated on a fast
-        // reload). onDetach() is idempotent, so the extra call on a genuine block break is harmless.
+        // reload). onDetach() is idempotent: the break path already fired onDetach(true) from
+        // dropModulesOnBreak, and this second call passes false.
         super.invalidate()
         mEntities?.forEach {
-            it.entity.behaviors.forEach { it.onDetach() }
+            it.entity.behaviors.forEach { it.onDetach(false) }
         }
     }
 
@@ -828,7 +832,7 @@ class DinRackBlockEntity(pos: BlockPos, state: BlockState):
         // Modules must be parsed before super.read: ElectricBehaviour.read rebuilds the
         // circuit on the client (its "Rebuild" sync flag) and must see the new module list.
         mEntities?.forEach {
-            it.entity.behaviors.forEach { it.onDetach() }
+            it.entity.behaviors.forEach { it.onDetach(false) }
         }
         overhang = if (tag.contains("Overhang", Tag.TAG_COMPOUND.toInt())) {
             OverhangGhost.read(tag.getCompound("Overhang")).also {

@@ -23,7 +23,7 @@ class PlcBeeperComponent : DinRackPlcComponent {
         this.ctx = ctx
     }
 
-    override fun onDetach() {
+    override fun onDetach(removed: Boolean) {
         ctx = null
     }
 

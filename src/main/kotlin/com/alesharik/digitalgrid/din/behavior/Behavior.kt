@@ -30,8 +30,19 @@ interface Behavior {
      */
     fun onAttach(ctx: AttachContext) {}
 
-    /** Called when this module instance leaves a placement (removed by a player) or the rack unloads. */
-    fun onDetach() {}
+    /**
+     * Called when this module instance leaves a placement, on both real removal and rack
+     * unload / client re-sync.
+     *
+     * [removed] is true only when the module is genuinely gone from the world (pulled out by a
+     * player, rack broken, wrench rotation) — that is the only case where a module may drop its
+     * contents into the world. It is false on chunk unload and on every client sync, where the
+     * module data is about to be re-read.
+     *
+     * Implementations must be idempotent: on a block break `onDetach(true)` is followed by a
+     * second `onDetach(false)` from `invalidate()`.
+     */
+    fun onDetach(removed: Boolean) {}
 
     fun serverTick(level: ServerLevel, be: BlockEntity) {}
 

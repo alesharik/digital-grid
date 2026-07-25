@@ -82,7 +82,7 @@ class DinRackPlcSpeakerEntity : DinRackEntity {
 
         override fun getPosition(): SpeakerPosition = pos ?: error("PLC speaker peripheral used before attach")
 
-        override fun onDetach() {
+        override fun onDetach(removed: Boolean) {
             val level = this.level ?: return
             ServerNetworking.sendToAllPlayers(SpeakerStopClientMessage(peripheral.getSource()), level.server)
         }
