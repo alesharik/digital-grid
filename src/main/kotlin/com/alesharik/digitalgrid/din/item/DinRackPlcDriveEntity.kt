@@ -79,8 +79,13 @@ class DinRackPlcDriveEntity : DinRackEntity {
         val buffer = CachedBuffers.partial(PartialModels.DIN_PLC_DRIVE, be)
         buffer.light<SuperByteBuffer>(light)
             .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
-        LIGHT_STATES[lightState]?.render(be, ms, bufferSource)
-        if (peripheral.isDiskPresent()) {
+        if (workDrawBehavior.powered) {
+            LIGHT_STATES[lightState]?.render(be, ms, bufferSource)
+        } else {
+            LIGHT_STATES[LightState.EMPTY]?.render(be, ms, bufferSource)
+        }
+        // The Lua isDiskPresent() is power-gated; rendering must not go through it.
+        if (peripheral.hasDisk()) {
             val diskBuffer = CachedBuffers.partial(PartialModels.DIN_PLC_DRIVE_DISK, be)
             diskBuffer.light<SuperByteBuffer>(light)
                 .renderInto(ms, bufferSource.getBuffer(RenderTypes.entitySolidBlockMipped()))
@@ -168,6 +173,9 @@ class DinRackPlcDriveEntity : DinRackEntity {
         private val ejectQueued = AtomicBoolean(false)
         private val stackDirty = AtomicBoolean(false)
 
+        /** Only ever touched on the server tick thread. */
+        private var wasPowered = false
+
         // IPeripheral implementation
         override fun getType(): String = "drive"
 
@@ -201,6 +209,11 @@ class DinRackPlcDriveEntity : DinRackEntity {
         }
 
         override fun serverTick(level: ServerLevel, be: BlockEntity) {
+            val powered = workDrawBehavior.powered
+            if (powered != wasPowered) {
+                wasPowered = powered
+                if (powered) mountAll() else unmountAll()
+            }
             if (stackDirty.getAndSet(false)) {
                 ctx?.markChanged()
                 ctx?.requestSync()
@@ -215,7 +228,8 @@ class DinRackPlcDriveEntity : DinRackEntity {
                 val info = MountInfo()
                 computers[computer] = info
                 val serverLevel = ctx?.level as? ServerLevel ?: return
-                if (!diskStack.isEmpty) {
+                // Do not mount while the rail is unpowered.
+                if (!diskStack.isEmpty && workDrawBehavior.powered) {
                     // Runs on the computer thread — must not touch the block entity directly.
                     mountDisk(computer, info, getOrCreateMount(serverLevel, immediate = false))
                 }
@@ -249,11 +263,13 @@ class DinRackPlcDriveEntity : DinRackEntity {
         // Lua methods (ported from DiskDrivePeripheral)
         @LuaFunction
         fun isDiskPresent(): Boolean {
-            return synchronized(this) { !diskStack.isEmpty }
+            ensurePowered()
+            return hasDisk()
         }
 
         @LuaFunction
         fun getDiskLabel(): Array<Any?>? {
+            ensurePowered()
             val (media, stack) = synchronized(this) { currentMedia to diskStack }
             val level = ctx?.level as? ServerLevel ?: return null
             return media?.let { arrayOf(it.getLabel(level.registryAccess(), stack)) }
@@ -261,6 +277,7 @@ class DinRackPlcDriveEntity : DinRackEntity {
 
         @LuaFunction(mainThread = true)
         fun setDiskLabel(label: String?) {
+            ensurePowered()
             val result = synchronized(this) {
                 val media = currentMedia ?: return@synchronized MountResult.NO_MEDIA
                 val stack = diskStack.copy()
@@ -285,11 +302,13 @@ class DinRackPlcDriveEntity : DinRackEntity {
 
         @LuaFunction
         fun hasData(computer: IComputerAccess): Boolean {
+            ensurePowered()
             return synchronized(this) { computers.containsKey(computer) && mount != null }
         }
 
         @LuaFunction
         fun getMountPath(computer: IComputerAccess): String? {
+            ensurePowered()
             synchronized(this) {
                 val info = computers[computer]
                 return info?.mountPath
@@ -297,32 +316,48 @@ class DinRackPlcDriveEntity : DinRackEntity {
         }
 
         @LuaFunction
-        fun hasAudio(): Boolean = false
+        fun hasAudio(): Boolean {
+            ensurePowered()
+            return false
+        }
 
         @LuaFunction
-        fun getAudioTitle(): Any? = null
+        fun getAudioTitle(): Any? {
+            ensurePowered()
+            return null
+        }
 
         @LuaFunction
         fun playAudio() {
+            ensurePowered()
             throw LuaException("Audio is not supported")
         }
 
         @LuaFunction
         fun stopAudio() {
+            ensurePowered()
             throw LuaException("Audio is not supported")
         }
 
         @LuaFunction
         fun ejectDisk() {
+            ensurePowered()
             ejectQueued.set(true)
         }
 
         @LuaFunction
         fun getDiskID(): Array<Any?>? {
+            ensurePowered()
             // Disk ID is stored on the item as CC's DISK_ID DataComponent (NonNegativeId).
             val stack = synchronized(this) { diskStack }
             val id = stack.get(ModRegistry.DataComponents.DISK_ID.get()) ?: return null
             return arrayOf(id.id())
+        }
+
+        private fun ensurePowered() {
+            if (!workDrawBehavior.powered) {
+                throw LuaException("Device not powered")
+            }
         }
 
         // Media/mount logic (ported from DiskDriveBlockEntity)
@@ -356,8 +391,9 @@ class DinRackPlcDriveEntity : DinRackEntity {
                 mediaStack = diskStack
                 currentMedia = newMedia
 
-                // Mount new disk if computers are attached
-                if (!diskStack.isEmpty && computers.isNotEmpty()) {
+                // Mount new disk if computers are attached (only while powered — a floppy
+                // inserted by hand into a dead rack must not mount).
+                if (!diskStack.isEmpty && computers.isNotEmpty() && workDrawBehavior.powered) {
                     val serverLevel = ctx?.level as? ServerLevel ?: return
                     val newMount = getOrCreateMount(serverLevel, immediate = true)
                     for ((key, value) in computers) {
@@ -418,6 +454,27 @@ class DinRackPlcDriveEntity : DinRackEntity {
             computer.queueEvent("disk_eject", computer.getAttachmentName())
         }
 
+        /** Re-mount the disk into every attached computer when the rail comes back up. */
+        private fun mountAll() {
+            synchronized(this) {
+                if (diskStack.isEmpty || computers.isEmpty()) return
+                val serverLevel = ctx?.level as? ServerLevel ?: return
+                val mnt = getOrCreateMount(serverLevel, immediate = true)
+                for ((computer, info) in computers) {
+                    // Already-mounted computers must be skipped, or mountDisk would re-fire "disk".
+                    if (info.mountPath == null) mountDisk(computer, info, mnt)
+                }
+            }
+        }
+
+        /** Drop the disk out of every attached computer when the rail dies. */
+        private fun unmountAll() {
+            synchronized(this) {
+                if (mediaStack.isEmpty) return
+                for ((computer, info) in computers) unmountDisk(computer, info)
+            }
+        }
+
         private fun ejectContents() {
             val context = ctx ?: return
             val level = context.level
@@ -443,6 +500,10 @@ class DinRackPlcDriveEntity : DinRackEntity {
             val registries = ctx?.level?.registryAccess() ?: return null
             return media?.getLabel(registries, stack)
         }
+
+        // Non-Lua accessor for rendering; the Lua isDiskPresent() is power-gated, so render()
+        // must use this instead (same reasoning as getDiskLabelForTooltip() above).
+        fun hasDisk(): Boolean = synchronized(this) { !diskStack.isEmpty }
 
         // Interaction handlers
         fun handleInsert(item: ItemStack, lv: Level, pos: MinecraftBlockPos, player: Player): ItemInteractionResult {
