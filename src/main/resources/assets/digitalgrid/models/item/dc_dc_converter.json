@@ -1,0 +1,7 @@
+{
+  "_comment": "TODO: placeholder — points at the control_circuit texture until an item texture is drawn (digitalgrid:item/dc_dc_converter).",
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "digitalgrid:item/control_circuit"
+  }
+}

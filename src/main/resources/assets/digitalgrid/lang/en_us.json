@@ -57,5 +57,16 @@
   "digitalgrid.goggles.plc_component.wireless_modem": "Wireless Modem",
   "digitalgrid.goggles.plc_component.ender_modem": "Ender Modem",
   "digitalgrid.goggles.plc_component.watchdog": "Watchdog",
-  "digitalgrid.goggles.plc_component.beeper": "Beeper"
+  "digitalgrid.goggles.plc_component.beeper": "Beeper",
+  "item.digitalgrid.dc_dc_converter": "DC-DC Buck-Boost Converter",
+  "component.digitalgrid.dc_dc_converter": "DC-DC Buck-Boost Converter",
+  "component.digitalgrid.dc_dc_converter.vin_plus": "Input +",
+  "component.digitalgrid.dc_dc_converter.vin_plus.short": "V+",
+  "component.digitalgrid.dc_dc_converter.vin_minus": "Input -",
+  "component.digitalgrid.dc_dc_converter.vin_minus.short": "V-",
+  "component.digitalgrid.dc_dc_converter.vout_plus": "Output +",
+  "component.digitalgrid.dc_dc_converter.vout_plus.short": "O+",
+  "component.digitalgrid.dc_dc_converter.vout_minus": "Output -",
+  "component.digitalgrid.dc_dc_converter.vout_minus.short": "O-",
+  "digitalgrid.component.property.dcdc_output_voltage": "Output Voltage"
 }

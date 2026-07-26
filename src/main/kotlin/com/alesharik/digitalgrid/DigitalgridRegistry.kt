@@ -29,7 +29,10 @@ import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderer
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import net.neoforged.neoforge.registries.NewRegistryEvent
+import org.patryk3211.powergrid.circuits.components.ComponentRegistry
+import org.patryk3211.powergrid.circuits.schematic.ComponentFootprint
 import org.patryk3211.powergrid.collections.ModdedItems
+import org.patryk3211.powergrid.circuits.components.Component as PgComponent
 import thedarkcolour.kotlinforforge.neoforge.forge.getValue
 import net.minecraft.core.registries.Registries as McRegistries
 
@@ -242,6 +245,36 @@ object DigitalgridRegistry {
             }
     }
 
+    /**
+     * Power Grid circuit-board components (the `circuit_design_table` -> `circuit_board` flow), as
+     * opposed to DIN rack modules.
+     *
+     * `ComponentRegistry.REGISTRY_KEY` is created by Power Grid's own NeoForge platform code
+     * (`NewRegistryEvent.create(new RegistryBuilder<>(...))` in `PowerGridImpl`), so a plain
+     * [DeferredRegister] binds to it — Registrate is not needed here, and Power Grid's
+     * `ComponentBuilder` is Registrate-only, so the footprint is built by hand below.
+     */
+    object CircuitComponents {
+        internal val COMPONENTS: DeferredRegister<PgComponent> =
+            DeferredRegister.create(ComponentRegistry.REGISTRY_KEY, Digitalgrid.ID)
+
+        private const val DC_DC_KEY_BASE = "component.${Digitalgrid.ID}.dc_dc_converter"
+
+        // ComponentFootprint.Builder(w, h) has no translation-key base, so the
+        // addPad(x, y, node, String, String) convenience overload that Registrate's
+        // ComponentBuilder.footprint relies on is unavailable — pass the components directly.
+        private val DC_DC_FOOTPRINT: ComponentFootprint = ComponentFootprint.Builder(4, 5)
+            .addPad(0, 1, 0, Component.translatable("$DC_DC_KEY_BASE.vin_plus"), Component.translatable("$DC_DC_KEY_BASE.vin_plus.short"))
+            .addPad(3, 1, 2, Component.translatable("$DC_DC_KEY_BASE.vout_plus"), Component.translatable("$DC_DC_KEY_BASE.vout_plus.short"))
+            .addPad(0, 3, 1, Component.translatable("$DC_DC_KEY_BASE.vin_minus"), Component.translatable("$DC_DC_KEY_BASE.vin_minus.short"))
+            .addPad(3, 3, 3, Component.translatable("$DC_DC_KEY_BASE.vout_minus"), Component.translatable("$DC_DC_KEY_BASE.vout_minus.short"))
+            .withItem()
+            .withOutline()
+            .build()
+
+        val DC_DC_CONVERTER by COMPONENTS.register("dc_dc_converter", { -> DcDcConverterComponent(DC_DC_FOOTPRINT) })
+    }
+
     internal object Registries {
         fun register(bus: IEventBus) {
             bus.addListener { event: NewRegistryEvent ->
@@ -254,6 +287,7 @@ object DigitalgridRegistry {
             DinRackEntities.DIN_RACK_ENTITIES.register(bus)
             PlcComponentTypes.PLC_COMPONENT_TYPES.register(bus)
             DataComponents.DATA_COMPONENTS.register(bus)
+            CircuitComponents.COMPONENTS.register(bus)
             CREATIVE_MODE_TABS.register(bus)
         }
     }

@@ -1,0 +1,23 @@
+{
+	"format_version": "1.21.11",
+	"credit": "Made with Blockbench",
+	"textures": {
+		"0": "digitalgrid:block/component/dc_dc_converter",
+		"particle": "digitalgrid:block/component/dc_dc_converter"
+	},
+	"elements": [
+		{
+			"from": [0, 0, 0],
+			"to": [4, 5, 5],
+			"rotation": {"angle": 0, "axis": "y", "origin": [2, 2.5, 2.5]},
+			"faces": {
+				"north": {"uv": [5, 0, 9, 5], "texture": "#0"},
+				"east": {"uv": [0, 0, 5, 5], "texture": "#0"},
+				"south": {"uv": [5, 5, 9, 10], "texture": "#0"},
+				"west": {"uv": [0, 5, 5, 10], "texture": "#0"},
+				"up": {"uv": [13, 5, 9, 0], "texture": "#0"},
+				"down": {"uv": [13, 5, 9, 10], "texture": "#0"}
+			}
+		}
+	]
+}

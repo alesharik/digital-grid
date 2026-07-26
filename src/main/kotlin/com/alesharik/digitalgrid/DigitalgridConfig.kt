@@ -83,6 +83,18 @@ object DigitalgridConfig {
                     diskCurrentDrawSpec = comment("Constant current draw when disk is present from the internal 24V bus, in amperes (at nominal voltage)")
                         .defineInRange("diskCurrentDraw", 0.2, 0.001, 100.0),
                 )
+            },
+            dcdcConverter = block("dcdcConverter") {
+                Config.DcDc(
+                    maxPowerSpec = comment("DC-DC converter maximum output power in watts (above this it burns out)")
+                        .defineInRange("maxPower", 100.0, 1.0, 1_000_000.0),
+                    efficiencySpec = comment("DC-DC converter conversion efficiency (0-1)")
+                        .defineInRange("efficiency", 0.9, 0.1, 1.0),
+                    minInputVoltageSpec = comment("Minimum input voltage for the DC-DC converter to produce output")
+                        .defineInRange("minInputVoltage", 6.0, 0.0, 100_000.0),
+                    maxInputVoltageSpec = comment("Maximum input voltage; above this the DC-DC converter burns out")
+                        .defineInRange("maxInputVoltage", 240.0, 1.0, 100_000.0)
+                )
             }
         )
     }
@@ -96,6 +108,7 @@ object DigitalgridConfig {
         val plcRelay: PlcRelay,
         val plcSpeaker: PlcSpeaker,
         val plcDrive: PlcDrive,
+        val dcdcConverter: DcDc,
     ) {
         data class Bus(
             private val voltageSpec: ModConfigSpec.DoubleValue,
@@ -240,6 +253,33 @@ object DigitalgridConfig {
              * Constant current draw when disk is present from the internal 24V bus, in amperes (at nominal voltage)
              */
             val diskCurrentDraw by diskCurrentDrawSpec.asVar(::Ampere)
+        }
+
+        data class DcDc(
+            private val maxPowerSpec: ModConfigSpec.DoubleValue,
+            private val efficiencySpec: ModConfigSpec.DoubleValue,
+            private val minInputVoltageSpec: ModConfigSpec.DoubleValue,
+            private val maxInputVoltageSpec: ModConfigSpec.DoubleValue,
+        ) {
+            /**
+             * DC-DC converter maximum output power in watts (above this it burns out)
+             */
+            val maxPower by maxPowerSpec.asVar(::Watt)
+
+            /**
+             * DC-DC converter conversion efficiency (0-1)
+             */
+            val efficiency by efficiencySpec.asVar()
+
+            /**
+             * Minimum input voltage for the DC-DC converter to produce output
+             */
+            val minInputVoltage by minInputVoltageSpec.asVar(::Volt)
+
+            /**
+             * Maximum input voltage; above this the DC-DC converter burns out
+             */
+            val maxInputVoltage by maxInputVoltageSpec.asVar(::Volt)
         }
     }
 }
