@@ -1,2 +1,4 @@
-// 1.21.1	2026-07-26T15:13:06.678366756	digitalgrid's sequenced assembly recipes
+// 1.21.1	2026-07-26T17:44:39.839001905	digitalgrid's sequenced assembly recipes
+a00c514ec1a8337d7903333a432307017110a7eb data/digitalgrid/recipe/sequenced_assembly/control_circuit.json
 38207e87aa73cd8f562455a8b87383a9b9624836 data/digitalgrid/recipe/sequenced_assembly/dc_dc_converter.json
+a082f1e1a45c64da4076014f40d24cd1200f4e42 data/digitalgrid/recipe/sequenced_assembly/wireless_circuit.json

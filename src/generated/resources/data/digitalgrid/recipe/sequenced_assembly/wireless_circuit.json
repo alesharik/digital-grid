@@ -1,0 +1,65 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "powergrid:integrated_circuit"
+  },
+  "results": [
+    {
+      "chance": 100.0,
+      "id": "digitalgrid:wireless_circuit"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_wireless_circuit"
+        },
+        {
+          "item": "create:transmitter"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_wireless_circuit"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_wireless_circuit"
+        },
+        {
+          "item": "powergrid:copper_coil"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_wireless_circuit"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_wireless_circuit"
+        },
+        {
+          "item": "powergrid:bjt_pnp"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_wireless_circuit"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "digitalgrid:incomplete_wireless_circuit"
+  }
+}

@@ -57,6 +57,26 @@ object DigitalgridRecipies {
                 .addDeployerStep(DigitalgridTags.Items.PLASTICS)
                 .addPressStep()
         }
+
+        val CONTROL_CIRCUIT = create("control_circuit") {
+            require(ModdedItems.INTEGRATED_CIRCUIT)
+                .transitionTo(DigitalgridRegistry.Items.INCOMPLETE_CONTROL_CIRCUIT)
+                .addOutput(DigitalgridRegistry.Items.CONTROL_CIRCUIT, 100f)
+                .loops(1)
+                .addDeployerStep(ModdedItems.CAPACITOR)
+                .addDeployerStep(ModdedItems.DIODE)
+                .addDeployerStep(ModdedItems.BJT_PNP)
+        }
+
+        val WIRELESS_CIRCUIT = create("wireless_circuit") {
+            require(ModdedItems.INTEGRATED_CIRCUIT)
+                .transitionTo(DigitalgridRegistry.Items.INCOMPLETE_WIRELESS_CIRCUIT)
+                .addOutput(DigitalgridRegistry.Items.WIRELESS_CIRCUIT, 100f)
+                .loops(1)
+                .addDeployerStep(AllItems.TRANSMITTER)
+                .addDeployerStep(ModdedItems.COPPER_COIL)
+                .addDeployerStep(ModdedItems.BJT_PNP)
+        }
     }
 
     class CraftingRecipies(out: PackOutput, registries: CompletableFuture<HolderLookup.Provider>) :

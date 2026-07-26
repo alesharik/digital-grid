@@ -1,0 +1,65 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "powergrid:integrated_circuit"
+  },
+  "results": [
+    {
+      "chance": 100.0,
+      "id": "digitalgrid:control_circuit"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_control_circuit"
+        },
+        {
+          "item": "powergrid:capacitor"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_control_circuit"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_control_circuit"
+        },
+        {
+          "item": "powergrid:diode"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_control_circuit"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_control_circuit"
+        },
+        {
+          "item": "powergrid:bjt_pnp"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_control_circuit"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "digitalgrid:incomplete_control_circuit"
+  }
+}
