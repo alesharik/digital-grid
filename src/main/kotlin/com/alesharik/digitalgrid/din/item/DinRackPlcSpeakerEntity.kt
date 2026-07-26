@@ -7,9 +7,15 @@ import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.behavior.Behavior
 import com.alesharik.digitalgrid.din.behavior.digibus.DigibusPeripheralBehavior
 import com.alesharik.digitalgrid.din.behavior.powergrid.WorkDrawBehavior
+import com.alesharik.digitalgrid.infra.luaImpl
 import com.alesharik.digitalgrid.utils.Lang
 import com.mojang.blaze3d.vertex.PoseStack
 import com.simibubi.create.foundation.render.RenderTypes
+import dan200.computercraft.api.lua.ILuaContext
+import dan200.computercraft.api.lua.LuaException
+import dan200.computercraft.api.lua.LuaFunction
+import dan200.computercraft.api.lua.LuaTable
+import dan200.computercraft.api.peripheral.IComputerAccess
 import dan200.computercraft.api.peripheral.IPeripheral
 import dan200.computercraft.shared.network.client.SpeakerStopClientMessage
 import dan200.computercraft.shared.network.server.ServerNetworking
@@ -30,6 +36,7 @@ import net.minecraft.world.phys.shapes.BooleanOp
 import net.minecraft.world.phys.shapes.Shapes
 import net.minecraft.world.phys.shapes.VoxelShape
 import org.patryk3211.powergrid.electricity.base.TerminalBoundingBox
+import java.util.*
 import java.util.stream.Stream
 
 class DinRackPlcSpeakerEntity : DinRackEntity {
@@ -37,10 +44,11 @@ class DinRackPlcSpeakerEntity : DinRackEntity {
     override val terminalBoundingBox: Array<TerminalBoundingBox> = emptyArray()
     override val width: DINUnit = DINUnit(4)
 
-    private val peripheral = Peripheral()
+    private val speaker = Speaker()
+    private val peripheral = PlcSpeakerPeripheral(this, speaker)
     private val digibusBehavior = DigibusPeripheralBehavior(peripheral)
     private val workDrawBehavior by lazy { WorkDrawBehavior.forBus(DigitalgridConfig.CONFIG.plcSpeaker.currentDraw) }
-    override val behaviors: List<Behavior> by lazy { listOf(digibusBehavior, peripheral, workDrawBehavior) }
+    override val behaviors: List<Behavior> by lazy { listOf(digibusBehavior, speaker, workDrawBehavior) }
 
     override fun render(
         be: BlockState,
@@ -64,9 +72,10 @@ class DinRackPlcSpeakerEntity : DinRackEntity {
         return true
     }
 
-    private inner class Peripheral : SpeakerPeripheral(), Behavior {
+    private inner class Speaker : SpeakerPeripheral(), Behavior {
         private var level: ServerLevel? = null
         private var pos: SpeakerPosition? = null
+        private var wasPowered = false
 
         override fun onAttach(ctx: Behavior.AttachContext) {
             if (ctx.level !is ServerLevel) return
@@ -77,7 +86,16 @@ class DinRackPlcSpeakerEntity : DinRackEntity {
         }
 
         override fun serverTick(level: ServerLevel, be: BlockEntity) {
-            update()
+            if (workDrawBehavior.powered) {
+                wasPowered = true
+                // update() is what actually broadcasts queued notes/sounds/DFPWM audio to clients,
+                // so only calling it while powered is what keeps the speaker silent when the rail is dead.
+                update()
+            } else if (wasPowered) {
+                wasPowered = false
+                stop() // clears any queued audio/sound on the next update()
+                broadcastStop(level)
+            }
         }
 
         override fun getLevel(): ServerLevel =
@@ -87,7 +105,58 @@ class DinRackPlcSpeakerEntity : DinRackEntity {
 
         override fun onDetach(removed: Boolean) {
             val level = this.level ?: return
-            ServerNetworking.sendToAllPlayers(SpeakerStopClientMessage(peripheral.getSource()), level.server)
+            broadcastStop(level)
+        }
+
+        private fun broadcastStop(level: ServerLevel) {
+            ServerNetworking.sendToAllPlayers(SpeakerStopClientMessage(source), level.server)
+        }
+
+        override fun equals(other: IPeripheral?): Boolean = other === this
+    }
+
+    class PlcSpeakerPeripheral(
+        private val module: DinRackPlcSpeakerEntity,
+        private val speaker: SpeakerPeripheral,
+    ) : IPeripheral {
+        override fun getType(): String = speaker.type
+
+        /** Play a note block note through the speaker. */
+        @LuaFunction
+        fun playNote(context: ILuaContext, instrument: String, volume: Optional<Double>, pitch: Optional<Double>): Boolean = luaImpl {
+            ensurePowered()
+            speaker.playNote(context, instrument, volume, pitch)
+        }
+
+        /** Play a Minecraft sound through the speaker. */
+        @LuaFunction
+        fun playSound(context: ILuaContext, name: String, volume: Optional<Double>, pitch: Optional<Double>): Boolean = luaImpl {
+            ensurePowered()
+            speaker.playSound(context, name, volume, pitch)
+        }
+
+        /** Stream DFPWM audio samples to the speaker. */
+        @LuaFunction(unsafe = true)
+        fun playAudio(context: ILuaContext, audio: LuaTable<*, *>, volume: Optional<Double>): Boolean = luaImpl {
+            ensurePowered()
+            speaker.playAudio(context, audio, volume)
+        }
+
+        /** Stop all audio being played by this speaker. */
+        @LuaFunction
+        fun stop() = luaImpl {
+            ensurePowered()
+            speaker.stop()
+        }
+
+        override fun attach(computer: IComputerAccess) = speaker.attach(computer)
+
+        override fun detach(computer: IComputerAccess) = speaker.detach(computer)
+
+        private fun ensurePowered() {
+            if (!module.workDrawBehavior.powered) {
+                throw LuaException("Device not powered")
+            }
         }
 
         override fun equals(other: IPeripheral?): Boolean = other === this
