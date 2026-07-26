@@ -77,6 +77,17 @@ object DigitalgridRecipies {
                 .addDeployerStep(ModdedItems.COPPER_COIL)
                 .addDeployerStep(ModdedItems.BJT_PNP)
         }
+
+        val MICROPROCESSOR = create("microprocessor") {
+            require(ModdedItems.INTEGRATED_CIRCUIT)
+                .transitionTo(DigitalgridRegistry.Items.INCOMPLETE_MICROPROCESSOR)
+                .addOutput(DigitalgridRegistry.Items.MICROPROCESSOR, 82f)
+                .loops(3)
+                .addDeployerStep(ModdedItems.BJT_PNP)
+                .addDeployerStep(ModdedItems.BJT_NPN)
+                .addDeployerStep(DigitalgridTags.Items.PLASTICS)
+                .addPressStep()
+        }
     }
 
     class CraftingRecipies(out: PackOutput, registries: CompletableFuture<HolderLookup.Provider>) :

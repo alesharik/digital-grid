@@ -1,0 +1,79 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "powergrid:integrated_circuit"
+  },
+  "loops": 3,
+  "results": [
+    {
+      "chance": 82.0,
+      "id": "digitalgrid:microprocessor"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_microprocessor"
+        },
+        {
+          "item": "powergrid:bjt_pnp"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_microprocessor"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_microprocessor"
+        },
+        {
+          "item": "powergrid:bjt_npn"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_microprocessor"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_microprocessor"
+        },
+        {
+          "tag": "digitalgrid:plastics"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_microprocessor"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_microprocessor"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_microprocessor"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "digitalgrid:incomplete_microprocessor"
+  }
+}
