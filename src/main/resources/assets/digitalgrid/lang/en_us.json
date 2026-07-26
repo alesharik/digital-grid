@@ -59,6 +59,7 @@
   "digitalgrid.goggles.plc_component.watchdog": "Watchdog",
   "digitalgrid.goggles.plc_component.beeper": "Beeper",
   "item.digitalgrid.dc_dc_converter": "DC-DC Buck-Boost Converter",
+  "item.digitalgrid.incomplete_dc_dc_converter": "Incomplete DC-DC Buck-Boost Converter",
   "component.digitalgrid.dc_dc_converter": "DC-DC Buck-Boost Converter",
   "component.digitalgrid.dc_dc_converter.vin_plus": "Input +",
   "component.digitalgrid.dc_dc_converter.vin_plus.short": "V+",

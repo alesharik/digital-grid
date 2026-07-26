@@ -1,0 +1,94 @@
+{
+  "type": "create:sequenced_assembly",
+  "ingredient": {
+    "item": "powergrid:empty_circuit"
+  },
+  "results": [
+    {
+      "chance": 100.0,
+      "id": "digitalgrid:dc_dc_converter"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_dc_dc_converter"
+        },
+        {
+          "item": "powergrid:diode"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_dc_dc_converter"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_dc_dc_converter"
+        },
+        {
+          "item": "powergrid:capacitor"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_dc_dc_converter"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_dc_dc_converter"
+        },
+        {
+          "item": "powergrid:copper_coil"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_dc_dc_converter"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_dc_dc_converter"
+        },
+        {
+          "tag": "digitalgrid:plastics"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_dc_dc_converter"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "digitalgrid:incomplete_dc_dc_converter"
+        }
+      ],
+      "results": [
+        {
+          "id": "digitalgrid:incomplete_dc_dc_converter"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "digitalgrid:incomplete_dc_dc_converter"
+  }
+}
