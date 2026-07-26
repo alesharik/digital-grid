@@ -1,20 +1,22 @@
 package com.alesharik.digitalgrid
 
+import com.alesharik.digitalgrid.recipe.BreadboardingAttachRecipe
+import com.alesharik.digitalgrid.recipe.BreadboardingCraftRecipe
+import com.alesharik.digitalgrid.recipe.CountedIngredient
+import com.alesharik.digitalgrid.utils.PressingRecipeGenKt
+import com.alesharik.digitalgrid.utils.SequencedAssemblyRecipeGenKt
 import com.alesharik.digitalgrid.utils.shaped
 import com.alesharik.digitalgrid.utils.shapeless
 import com.simibubi.create.AllItems
-import com.simibubi.create.api.data.recipe.PressingRecipeGen
-import com.simibubi.create.api.data.recipe.SequencedAssemblyRecipeGen
-import com.simibubi.create.content.kinetics.deployer.DeployerApplicationRecipe
-import com.simibubi.create.content.kinetics.deployer.ItemApplicationRecipe
-import com.simibubi.create.content.kinetics.press.PressingRecipe
-import com.simibubi.create.content.processing.recipe.StandardProcessingRecipe
 import dan200.computercraft.shared.ModRegistry
 import net.minecraft.core.HolderLookup
 import net.minecraft.data.PackOutput
 import net.minecraft.data.recipes.RecipeOutput
 import net.minecraft.data.recipes.RecipeProvider
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
+import net.minecraft.world.item.crafting.Ingredient
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import org.patryk3211.powergrid.collections.ModdedBlocks
 import org.patryk3211.powergrid.collections.ModdedItems
@@ -30,44 +32,31 @@ object DigitalgridRecipies {
     }
 
     class PressingRecipes(out: PackOutput, registries: CompletableFuture<HolderLookup.Provider>) :
-        PressingRecipeGen(
+        PressingRecipeGenKt(
             out,
             registries,
             Digitalgrid.ID
         ) {
-        val PLASTIC = create("plastic", {
-            it.require(AllItems.CARDBOARD).output(DigitalgridRegistry.Items.PLASTIC)
-        })
+
+        val PLASTIC = create("plastic") {
+            require(AllItems.CARDBOARD).output(DigitalgridRegistry.Items.PLASTIC)
+        }
     }
 
     class SequencedAssemblyRecipes(out: PackOutput, registries: CompletableFuture<HolderLookup.Provider>) :
-        SequencedAssemblyRecipeGen(out, registries, Digitalgrid.ID) {
-        val DC_DC_CONVERTER = create("dc_dc_converter", { b ->
-            b.require(ModdedItems.EMPTY_CIRCUIT)
+        SequencedAssemblyRecipeGenKt(out, registries, Digitalgrid.ID) {
+
+        val DC_DC_CONVERTER = create("dc_dc_converter") {
+            require(ModdedItems.EMPTY_CIRCUIT)
                 .transitionTo(DigitalgridRegistry.Items.INCOMPLETE_DC_DC_CONVERTER)
                 .addOutput(DigitalgridRegistry.Items.DC_DC_CONVERTER, 100f)
                 .loops(1)
-                .addStep(
-                    ItemApplicationRecipe.Factory { params -> DeployerApplicationRecipe(params) },
-                    { it.require(ModdedItems.DIODE) },
-                )
-                .addStep(
-                    ItemApplicationRecipe.Factory { params -> DeployerApplicationRecipe(params) },
-                    { it.require(ModdedItems.CAPACITOR) },
-                )
-                .addStep(
-                    ItemApplicationRecipe.Factory { params -> DeployerApplicationRecipe(params) },
-                    { it.require(ModdedItems.COPPER_COIL) },
-                )
-                .addStep(
-                    ItemApplicationRecipe.Factory { params -> DeployerApplicationRecipe(params) },
-                    { it.require(DigitalgridTags.Items.PLASTICS) },
-                )
-                .addStep(
-                    StandardProcessingRecipe.Factory { params -> PressingRecipe(params) },
-                    { it },
-                )
-        })
+                .addDeployerStep(ModdedItems.DIODE)
+                .addDeployerStep(ModdedItems.CAPACITOR)
+                .addDeployerStep(ModdedItems.COPPER_COIL)
+                .addDeployerStep(DigitalgridTags.Items.PLASTICS)
+                .addPressStep()
+        }
     }
 
     class CraftingRecipies(out: PackOutput, registries: CompletableFuture<HolderLookup.Provider>) :
