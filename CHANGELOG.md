@@ -12,3 +12,5 @@
 - add speaker module
 - add beeper component
 - add PLC drive module
+
+- add DC-DC converter item
