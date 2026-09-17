@@ -71,6 +71,24 @@ type = "required"
 versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
+# Create — the rack and its modules render through Create's CachedBuffers/PartialModels and
+# extend its SmartBlockEntity/BlockEntityBehaviour system. Catnip and Flywheel come with it.
+[[dependencies."${mod_id}"]]
+modId = "create"
+type = "required"
+versionRange = "${create_version_range}"
+ordering = "AFTER"
+side = "BOTH"
+
+# Power Grid — supplies the electricity simulation the DIN rack plugs into (ElectricBlockEntity,
+# the circuit solver, and the circuit-board components this mod registers).
+[[dependencies."${mod_id}"]]
+modId = "powergrid"
+type = "required"
+versionRange = "${powergrid_version_range}"
+ordering = "AFTER"
+side = "BOTH"
+
 # ComputerCraft: Tweaked — the DIN-rack PLC module embeds a CC computer.
 [[dependencies."${mod_id}"]]
 modId = "computercraft"

@@ -106,7 +106,7 @@ class DinRackPowerSupplyEntity: DinRackEntity {
             get() = coupling?.stateValue?.coerceAtLeast(0.0)?.let(::Ampere)
 
         override fun buildCircuit(ctx: PowerGridBehavior.CircuitContext) {
-            val out = ctx.builder.addInternalNode()
+            val out = FloatingNode()
             // Secondary voltage = ratio * input voltage; ratio 0 keeps the output dead
             // until the first tick measures the input.
             coupling = ctx.builder.couple(
@@ -114,6 +114,10 @@ class DinRackPowerSupplyEntity: DinRackEntity {
                 ctx.terminalNode(0), ctx.terminalNode(1),
                 out, ctx.busMinus,
             )
+            // `out` is registered after the coupling on purpose: CircuitBuilder.clear() drops
+            // internal nodes in list order, so a coupled node added first would die while the
+            // coupling still references it ("node removed before it was fully decoupled").
+            ctx.builder.add(out)
             // Power Grid's 1N4007 diode model; blocks any back-feed from the bus.
             val d = PNJunctionWire(5.47e-9, 0.075, 22.0, 1.783, out, ctx.bus24V)
             ctx.builder.add(d)

@@ -63,8 +63,12 @@ class IONodeBehavior(
         // drives the pin through a switch. Open switch = high-impedance (read-only)
         // pin, so the converter never fights an externally applied voltage. The
         // first tick closes the switch for driven pins with a proper ratio.
-        val out = ctx.builder.addInternalNode()
+        val out = FloatingNode()
         coupling = ctx.builder.couple(0f, driverResistance.value, ctx.bus24V, ctx.busMinus, out, ctx.busMinus)
+        // `out` is registered after the coupling on purpose: CircuitBuilder.clear() drops
+        // internal nodes in list order, so a coupled node added first would die while the
+        // coupling still references it ("node removed before it was fully decoupled").
+        ctx.builder.add(out)
         switch = ctx.builder.connectSwitch(switchResistance.value, out, ctx.terminalNode(terminal), false)
         node = ctx.terminalNode(terminal)
     }

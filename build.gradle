@@ -134,7 +134,7 @@ dependencies {
     implementation("com.tterrag.registrate:Registrate:${registrate_version}")
 
     implementation "curse.maven:architectury-api-419699:5786327"
-    implementation 'curse.maven:power-grid-1321420:7999916'
+    implementation 'curse.maven:power-grid-1321420:8648636'
 
     // Vanilla (i.e. for multi-loader systems)
     compileOnly("cc.tweaked:cc-tweaked-$minecraft_version-common-api:$cctVersion")
@@ -177,6 +177,8 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
                              neo_version            : neo_version,
                              neo_version_range      : neo_version_range,
                              loader_version_range   : loader_version_range,
+                             create_version_range   : create_version_range,
+                             powergrid_version_range: powergrid_version_range,
                              mod_id                 : mod_id,
                              mod_name               : mod_name,
                              mod_license            : mod_license,
