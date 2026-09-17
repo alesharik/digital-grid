@@ -1,6 +1,11 @@
 package com.alesharik.digitalgrid
 
 import com.alesharik.digitalgrid.block.*
+import com.alesharik.digitalgrid.block.menu.AssemblyTableMenu
+import com.alesharik.digitalgrid.circuit.component.DcDcConverterComponent
+import com.alesharik.digitalgrid.circuit.component.NChannelMosfetComponent
+import com.alesharik.digitalgrid.circuit.component.PChannelMosfetComponent
+import com.alesharik.digitalgrid.client.screen.AssemblyTableScreen
 import com.alesharik.digitalgrid.din.DinRackEntity
 import com.alesharik.digitalgrid.din.DinRackRegistry
 import com.alesharik.digitalgrid.din.item.*
@@ -11,30 +16,39 @@ import com.alesharik.digitalgrid.din.rack.DinRackBlock
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntity
 import com.alesharik.digitalgrid.din.rack.DinRackBlockEntityRenderer
 import com.alesharik.digitalgrid.din.rack.DinRackItem
+import com.alesharik.digitalgrid.recipe.AssemblyAttachRecipe
+import com.alesharik.digitalgrid.recipe.AssemblyAttachSerializer
+import com.alesharik.digitalgrid.recipe.AssemblyCraftRecipe
+import com.alesharik.digitalgrid.recipe.AssemblyCraftSerializer
 import com.alesharik.digitalgrid.utils.Lang
+import com.simibubi.create.content.processing.sequenced.SequencedAssemblyItem
 import dan200.computercraft.api.peripheral.PeripheralCapability
 import net.minecraft.core.component.DataComponentType
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.network.chat.Component
+import net.minecraft.world.inventory.MenuType
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.CreativeModeTab
 import net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.item.crafting.RecipeSerializer
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockBehaviour
 import net.neoforged.bus.api.IEventBus
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
 import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import net.neoforged.neoforge.registries.NewRegistryEvent
 import org.patryk3211.powergrid.circuits.components.ComponentRegistry
 import org.patryk3211.powergrid.circuits.schematic.ComponentFootprint
 import org.patryk3211.powergrid.collections.ModdedItems
-import org.patryk3211.powergrid.circuits.components.Component as PgComponent
 import thedarkcolour.kotlinforforge.neoforge.forge.getValue
 import net.minecraft.core.registries.Registries as McRegistries
+import org.patryk3211.powergrid.circuits.components.Component as PgComponent
 
 object DigitalgridRegistry {
     internal val CREATIVE_MODE_TABS: DeferredRegister<CreativeModeTab> = DeferredRegister.create(BuiltInRegistries.CREATIVE_MODE_TAB, Digitalgrid.ID)
@@ -46,6 +60,7 @@ object DigitalgridRegistry {
             .displayItems { _: ItemDisplayParameters?, output: CreativeModeTab.Output ->
                 output.accept(Items.DIN_RACK)
                 output.accept(Items.WATCHDOG_TIMER)
+                output.accept(Items.ASSEMBLY_TABLE)
                 output.accept(Items.DIN_RACK_PATCH)
                 output.accept(Items.DIN_RACK_CASING)
                 output.accept(Items.DIN_RACK_CASING_DIGIBUS)
@@ -77,6 +92,9 @@ object DigitalgridRegistry {
                 output.accept(Items.CONTROL_CIRCUIT)
                 output.accept(Items.WIRELESS_CIRCUIT)
                 output.accept(Items.DIGIBUS_CONNECTOR)
+                output.accept(Items.DC_DC_CONVERTER)
+                output.accept(Items.MOSFET_N)
+                output.accept(Items.MOSFET_P)
             }
             .build()
     })
@@ -84,6 +102,13 @@ object DigitalgridRegistry {
     fun registerRenderers(event: RegisterRenderers) {
         event.registerBlockEntityRenderer(BlockEntities.DIN_RACK) { DinRackBlockEntityRenderer() }
         event.registerBlockEntityRenderer(BlockEntities.WATCHDOG_TIMER) { WatchdogTimerBlockEntityRenderer() }
+        event.registerBlockEntityRenderer(BlockEntities.ASSEMBLY_TABLE) { AssemblyTableBlockEntityRenderer() }
+    }
+
+    fun registerScreens(event: RegisterMenuScreensEvent) {
+        event.register(Menus.ASSEMBLY_TABLE.get()) { menu, inventory, title ->
+            AssemblyTableScreen(menu, inventory, title)
+        }
     }
 
     fun registerCapabilities(event: RegisterCapabilitiesEvent) {
@@ -99,6 +124,7 @@ object DigitalgridRegistry {
 
         val DIN_RACK by BLOCKS.register("din_rack") { -> DinRackBlock() }
         val WATCHDOG_TIMER by BLOCKS.register("watchdog_timer") { -> WatchdogTimerBlock(BlockBehaviour.Properties.of()) }
+        val ASSEMBLY_TABLE by BLOCKS.register("assembly_table") { -> AssemblyTableBlock(BlockBehaviour.Properties.of().noOcclusion()) }
     }
 
     object BlockEntities {
@@ -106,6 +132,7 @@ object DigitalgridRegistry {
 
         val DIN_RACK by BLOCK_ENTITIES.register("din_rack", { -> BlockEntityType.Builder.of(::DinRackBlockEntity, Blocks.DIN_RACK).build(null) })
         val WATCHDOG_TIMER by BLOCK_ENTITIES.register("watchdog_timer", { -> BlockEntityType.Builder.of(::WatchdogTimerBlockEntity, Blocks.WATCHDOG_TIMER).build(null) })
+        val ASSEMBLY_TABLE by BLOCK_ENTITIES.register("assembly_table", { -> BlockEntityType.Builder.of(::AssemblyTableBlockEntity, Blocks.ASSEMBLY_TABLE).build(null) })
     }
 
     object Items {
@@ -113,6 +140,7 @@ object DigitalgridRegistry {
 
         val DIN_RACK by ITEMS.register("din_rack", { -> BlockItem(Blocks.DIN_RACK, Item.Properties()) })
         val WATCHDOG_TIMER by ITEMS.register("watchdog_timer", { -> BlockItem(Blocks.WATCHDOG_TIMER, Item.Properties()) })
+        val ASSEMBLY_TABLE by ITEMS.register("assembly_table", { -> BlockItem(Blocks.ASSEMBLY_TABLE, Item.Properties()) })
 
         val DIN_RACK_PATCH by ITEMS.register("din_rack_patch", { ->
             DinRackItem(
@@ -176,6 +204,37 @@ object DigitalgridRegistry {
         val CONTROL_CIRCUIT by ITEMS.register("control_circuit", { -> Item(Item.Properties()) })
         val WIRELESS_CIRCUIT by ITEMS.register("wireless_circuit", { -> Item(Item.Properties()) })
         val DIGIBUS_CONNECTOR by ITEMS.register("digibus_connector", { -> Item(Item.Properties()) })
+
+        val DC_DC_CONVERTER by ITEMS.register("dc_dc_converter", { -> Item(Item.Properties()) })
+
+        val MOSFET_N by ITEMS.register("mosfet_n", { -> Item(Item.Properties()) })
+        val MOSFET_P by ITEMS.register("mosfet_p", { -> Item(Item.Properties()) })
+
+        val INCOMPLETE_DC_DC_CONVERTER by ITEMS.register("incomplete_dc_dc_converter", { -> SequencedAssemblyItem(Item.Properties()) })
+        val INCOMPLETE_CONTROL_CIRCUIT by ITEMS.register("incomplete_control_circuit", { -> SequencedAssemblyItem(Item.Properties()) })
+        val INCOMPLETE_WIRELESS_CIRCUIT by ITEMS.register("incomplete_wireless_circuit", { -> SequencedAssemblyItem(Item.Properties()) })
+        val INCOMPLETE_MICROPROCESSOR by ITEMS.register("incomplete_microprocessor", { -> SequencedAssemblyItem(Item.Properties()) })
+    }
+
+    object Menus {
+        internal val MENUS: DeferredRegister<MenuType<*>> =
+            DeferredRegister.create(BuiltInRegistries.MENU, Digitalgrid.ID)
+
+        val ASSEMBLY_TABLE: DeferredHolder<MenuType<*>, MenuType<AssemblyTableMenu>> =
+            MENUS.register("assembly_table") { ->
+                IMenuTypeExtension.create(AssemblyTableMenu::clientFactory)
+            }
+    }
+
+    object RecipeSerializers {
+        internal val RECIPE_SERIALIZERS: DeferredRegister<RecipeSerializer<*>> =
+            DeferredRegister.create(McRegistries.RECIPE_SERIALIZER, Digitalgrid.ID)
+
+        val ASSEMBLY_ATTACH: DeferredHolder<RecipeSerializer<*>, RecipeSerializer<AssemblyAttachRecipe>> =
+            RECIPE_SERIALIZERS.register("assembly_attach") { -> AssemblyAttachSerializer }
+
+        val ASSEMBLY_CRAFT: DeferredHolder<RecipeSerializer<*>, RecipeSerializer<AssemblyCraftRecipe>> =
+            RECIPE_SERIALIZERS.register("assembly_craft") { -> AssemblyCraftSerializer }
     }
 
     object DinRackEntities {
@@ -273,6 +332,26 @@ object DigitalgridRegistry {
             .build()
 
         val DC_DC_CONVERTER by COMPONENTS.register("dc_dc_converter", { -> DcDcConverterComponent(DC_DC_FOOTPRINT) })
+
+        private const val MOSFET_KEY_BASE = "component.${Digitalgrid.ID}.mosfet"
+
+        // Terminal indices are the same in both variants (0 = drain, 1 = gate, 2 = source); only
+        // the pad positions mirror, the same way PowerGrid's NPN puts collector at x=0 and PNP
+        // puts it at x=2.
+        private val MOSFET_N_FOOTPRINT: ComponentFootprint = ComponentFootprint.Builder(3, 2)
+            .addPad(0, 0, 0, Component.translatable("$MOSFET_KEY_BASE.drain"), Component.translatable("$MOSFET_KEY_BASE.drain.short"))
+            .addPad(1, 1, 1, Component.translatable("$MOSFET_KEY_BASE.gate"), Component.translatable("$MOSFET_KEY_BASE.gate.short"))
+            .addPad(2, 0, 2, Component.translatable("$MOSFET_KEY_BASE.source"), Component.translatable("$MOSFET_KEY_BASE.source.short"))
+            .build()
+
+        private val MOSFET_P_FOOTPRINT: ComponentFootprint = ComponentFootprint.Builder(3, 2)
+            .addPad(2, 0, 0, Component.translatable("$MOSFET_KEY_BASE.drain"), Component.translatable("$MOSFET_KEY_BASE.drain.short"))
+            .addPad(1, 1, 1, Component.translatable("$MOSFET_KEY_BASE.gate"), Component.translatable("$MOSFET_KEY_BASE.gate.short"))
+            .addPad(0, 0, 2, Component.translatable("$MOSFET_KEY_BASE.source"), Component.translatable("$MOSFET_KEY_BASE.source.short"))
+            .build()
+
+        val MOSFET_N by COMPONENTS.register("mosfet_n", { -> NChannelMosfetComponent(MOSFET_N_FOOTPRINT) })
+        val MOSFET_P by COMPONENTS.register("mosfet_p", { -> PChannelMosfetComponent(MOSFET_P_FOOTPRINT) })
     }
 
     internal object Registries {
@@ -284,6 +363,8 @@ object DigitalgridRegistry {
             Blocks.BLOCKS.register(bus)
             Items.ITEMS.register(bus)
             BlockEntities.BLOCK_ENTITIES.register(bus)
+            Menus.MENUS.register(bus)
+            RecipeSerializers.RECIPE_SERIALIZERS.register(bus)
             DinRackEntities.DIN_RACK_ENTITIES.register(bus)
             PlcComponentTypes.PLC_COMPONENT_TYPES.register(bus)
             DataComponents.DATA_COMPONENTS.register(bus)

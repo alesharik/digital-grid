@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "digitalgrid:block/assembly_table_empty" }
+  }
+}

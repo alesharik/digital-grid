@@ -29,6 +29,8 @@ object PartialModels {
     val WATCHDOG_TIMER_LIGHT_WORK = blockModel("watchdog_timer_light_work")
     val WATCHDOG_TIMER_LIGHT_ACTIVITY = blockModel("watchdog_timer_light_activity")
 
+    val ASSEMBLY_TABLE = blockModel("assembly_table")
+
     // Forces the object initializer to run; must be called during client mod
     // construction so all partials exist before ModelEvent.RegisterAdditional.
     fun init() {}

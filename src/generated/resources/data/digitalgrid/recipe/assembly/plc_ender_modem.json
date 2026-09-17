@@ -1,0 +1,12 @@
+{
+  "type": "digitalgrid:assembly_attach",
+  "component": "digitalgrid:plc_ender_modem",
+  "ingredients": [
+    {
+      "item": "digitalgrid:wireless_circuit"
+    },
+    {
+      "item": "minecraft:ender_pearl"
+    }
+  ]
+}

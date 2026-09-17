@@ -1,0 +1,12 @@
+{
+  "type": "digitalgrid:assembly_attach",
+  "component": "digitalgrid:plc_wireless_modem",
+  "ingredients": [
+    {
+      "item": "digitalgrid:wireless_circuit"
+    },
+    {
+      "item": "minecraft:iron_ingot"
+    }
+  ]
+}

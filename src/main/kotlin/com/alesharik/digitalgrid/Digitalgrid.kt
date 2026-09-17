@@ -1,9 +1,9 @@
 package com.alesharik.digitalgrid
 
+import com.alesharik.digitalgrid.client.AssemblyPadHighlight
 import com.alesharik.digitalgrid.client.PartialModels
 import com.alesharik.digitalgrid.din.item.plc.DinRackPlcLuaAPI
 import dan200.computercraft.api.ComputerCraftAPI
-import dan200.computercraft.api.peripheral.PeripheralCapability
 import net.minecraft.client.Minecraft
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.ModLoadingContext
@@ -12,6 +12,7 @@ import net.neoforged.fml.common.Mod
 import net.neoforged.fml.config.ModConfig
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
 import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -37,6 +38,7 @@ object Digitalgrid {
 
         runForDist(clientTarget = {
             PartialModels.init()
+            AssemblyPadHighlight.register()
             Minecraft.getInstance()
         }, serverTarget = { "test" })
     }
@@ -44,6 +46,11 @@ object Digitalgrid {
     @SubscribeEvent
     fun registerEntityRenderers(event: RegisterRenderers) {
         DigitalgridRegistry.registerRenderers(event)
+    }
+
+    @SubscribeEvent
+    fun registerScreens(event: RegisterMenuScreensEvent) {
+        DigitalgridRegistry.registerScreens(event)
     }
 
     @SubscribeEvent

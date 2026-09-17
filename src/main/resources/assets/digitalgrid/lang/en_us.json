@@ -2,6 +2,7 @@
   "itemGroup.digitalgrid": "Digital Grid",
   "block.digitalgrid.din_rack": "DIN Rack",
   "block.digitalgrid.watchdog_timer": "Watchdog Timer",
+  "block.digitalgrid.assembly_table": "Assembly Table",
   "item.digitalgrid.din_rack": "DIN Rack",
   "item.digitalgrid.din_rack_patch": "Rack Patch",
   "item.digitalgrid.din_rack_casing": "Rack Casing",
@@ -20,6 +21,7 @@
   "item.digitalgrid.wireless_circuit": "Wireless Circuit",
   "item.digitalgrid.digibus_connector": "DigiBus Connector",
   "item.digitalgrid.watchdog_timer": "Watchdog Timer",
+  "item.digitalgrid.assembly_table": "Assembly Table",
   "item.digitalgrid.plc_wireless_modem": "Wireless Modem",
   "item.digitalgrid.plc_ender_modem": "Ender Modem",
   "item.digitalgrid.plc_watchdog": "Watchdog",
@@ -69,5 +71,16 @@
   "component.digitalgrid.dc_dc_converter.vout_plus.short": "O+",
   "component.digitalgrid.dc_dc_converter.vout_minus": "Output -",
   "component.digitalgrid.dc_dc_converter.vout_minus.short": "O-",
-  "digitalgrid.component.property.dcdc_output_voltage": "Output Voltage"
+  "digitalgrid.component.property.dcdc_output_voltage": "Output Voltage",
+  "item.digitalgrid.mosfet_n": "N-Channel MOSFET",
+  "item.digitalgrid.mosfet_p": "P-Channel MOSFET",
+  "component.digitalgrid.mosfet_n": "N-Channel MOSFET",
+  "component.digitalgrid.mosfet_p": "P-Channel MOSFET",
+  "component.digitalgrid.mosfet.drain": "Drain",
+  "component.digitalgrid.mosfet.drain.short": "D",
+  "component.digitalgrid.mosfet.gate": "Gate",
+  "component.digitalgrid.mosfet.gate.short": "G",
+  "component.digitalgrid.mosfet.source": "Source",
+  "component.digitalgrid.mosfet.source.short": "S",
+  "digitalgrid.component.property.mosfet_threshold_voltage": "Threshold Voltage"
 }

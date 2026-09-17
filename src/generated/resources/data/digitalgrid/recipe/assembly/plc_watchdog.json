@@ -1,0 +1,12 @@
+{
+  "type": "digitalgrid:assembly_attach",
+  "component": "digitalgrid:plc_watchdog",
+  "ingredients": [
+    {
+      "item": "powergrid:iron_wire"
+    },
+    {
+      "item": "minecraft:clock"
+    }
+  ]
+}

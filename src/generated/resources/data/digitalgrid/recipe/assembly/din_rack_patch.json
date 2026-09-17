@@ -1,0 +1,20 @@
+{
+  "type": "digitalgrid:assembly_craft",
+  "ingredients": [
+    {
+      "count": 2,
+      "ingredient": {
+        "item": "create:copper_nugget"
+      }
+    },
+    {
+      "ingredient": {
+        "item": "digitalgrid:din_rack_casing"
+      }
+    }
+  ],
+  "result": {
+    "count": 1,
+    "id": "digitalgrid:din_rack_patch"
+  }
+}

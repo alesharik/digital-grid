@@ -2,6 +2,7 @@ package com.alesharik.digitalgrid.circuit.component
 
 import com.alesharik.digitalgrid.Digitalgrid
 import com.alesharik.digitalgrid.DigitalgridConfig
+import com.alesharik.digitalgrid.circuit.component.DcDcConverterComponent.Companion.OUTPUT_VOLTAGE
 import com.alesharik.digitalgrid.circuit.sim.DcDcConverterWire
 import com.google.common.collect.ImmutableCollection
 import org.patryk3211.powergrid.circuits.circuitboard.ComponentCircuitBuilder
@@ -25,9 +26,9 @@ class DcDcConverterComponent(footprint: ComponentFootprint) : Component(footprin
         properties.add(OUTPUT_VOLTAGE)
     }
 
-    // Config must only be read here, in bake() - not in the constructor or in a property
-    // initializer, both of which run during registry events before DigitalgridConfig.CONFIG
-    // is loaded.
+    // Config must only be read directly here, in bake() - not in the constructor or in a plain
+    // property initializer, both of which run during registry events before DigitalgridConfig.CONFIG
+    // is loaded. OUTPUT_VOLTAGE reads config too, but lazily, via ConfigFloatProperty.
     override fun bake(placed: PlacedComponent, builder: ComponentCircuitBuilder, thermals: ThermalBuilder.IEmitter) {
         val config = DigitalgridConfig.CONFIG.dcdcConverter
         val efficiency = config.efficiency.toFloat()
@@ -82,6 +83,16 @@ class DcDcConverterComponent(footprint: ComponentFootprint) : Component(footprin
 
     companion object {
         val OUTPUT_VOLTAGE: FloatProperty = FloatProperty(Digitalgrid.ID, "dcdc_output_voltage", 24f, 2f, 60f)
+//
+//        val OUTPUT_VOLTAGE: FloatProperty by lazy {
+//            FloatProperty(
+//                Digitalgrid.ID,
+//                "dcdc_output_voltage",
+//                DigitalgridConfig.CONFIG.dcdcConverter.outputVoltage.value,
+//                DigitalgridConfig.CONFIG.dcdcConverter.minOutputVoltage.value,
+//                DigitalgridConfig.CONFIG.dcdcConverter.maxOutputVoltage.value
+//            )
+//        }
 
         private const val TRANSFORMER_RESISTANCE = 0.1f
 

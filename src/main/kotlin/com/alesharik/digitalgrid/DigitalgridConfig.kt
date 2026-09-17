@@ -93,7 +93,31 @@ object DigitalgridConfig {
                     minInputVoltageSpec = comment("Minimum input voltage for the DC-DC converter to produce output")
                         .defineInRange("minInputVoltage", 6.0, 0.0, 100_000.0),
                     maxInputVoltageSpec = comment("Maximum input voltage; above this the DC-DC converter burns out")
-                        .defineInRange("maxInputVoltage", 240.0, 1.0, 100_000.0)
+                        .defineInRange("maxInputVoltage", 240.0, 1.0, 100_000.0),
+                    outputVoltageSpec = comment("Default DC-DC converter output voltage setpoint")
+                        .defineInRange("outputVoltage", 24.0, 0.0, 100_000.0),
+                    minOutputVoltageSpec = comment("Minimum selectable DC-DC converter output voltage setpoint")
+                        .defineInRange("minOutputVoltage", 2.0, 0.0, 100_000.0),
+                    maxOutputVoltageSpec = comment("Maximum selectable DC-DC converter output voltage setpoint")
+                        .defineInRange("maxOutputVoltage", 60.0, 1.0, 100_000.0)
+                )
+            },
+            mosfet = block("mosfet") {
+                Config.Mosfet(
+                    thresholdVoltageSpec = comment("Default MOSFET gate threshold voltage")
+                        .defineInRange("thresholdVoltage", 2.0, 0.1, 100.0),
+                    minThresholdVoltageSpec = comment("Minimum selectable MOSFET gate threshold voltage")
+                        .defineInRange("minThresholdVoltage", 1.0, 0.1, 100.0),
+                    maxThresholdVoltageSpec = comment("Maximum selectable MOSFET gate threshold voltage")
+                        .defineInRange("maxThresholdVoltage", 5.0, 0.1, 100.0),
+                    transconductanceSpec = comment("MOSFET transconductance parameter k (A/V^2); higher means lower on-resistance")
+                        .defineInRange("transconductance", 2.0, 0.001, 1000.0),
+                    channelLengthModulationSpec = comment("MOSFET channel-length modulation lambda (1/V); output conductance in saturation")
+                        .defineInRange("channelLengthModulation", 0.02, 0.0, 1.0),
+                    maxPowerSpec = comment("MOSFET maximum dissipation in watts before it burns out")
+                        .defineInRange("maxPower", 60.0, 1.0, 1_000_000.0),
+                    overheatTemperatureSpec = comment("MOSFET overheat temperature in degrees Celsius")
+                        .defineInRange("overheatTemperature", 125.0, 50.0, 1000.0)
                 )
             }
         )
@@ -109,6 +133,7 @@ object DigitalgridConfig {
         val plcSpeaker: PlcSpeaker,
         val plcDrive: PlcDrive,
         val dcdcConverter: DcDc,
+        val mosfet: Mosfet,
     ) {
         data class Bus(
             private val voltageSpec: ModConfigSpec.DoubleValue,
@@ -260,6 +285,9 @@ object DigitalgridConfig {
             private val efficiencySpec: ModConfigSpec.DoubleValue,
             private val minInputVoltageSpec: ModConfigSpec.DoubleValue,
             private val maxInputVoltageSpec: ModConfigSpec.DoubleValue,
+            private val outputVoltageSpec: ModConfigSpec.DoubleValue,
+            private val minOutputVoltageSpec: ModConfigSpec.DoubleValue,
+            private val maxOutputVoltageSpec: ModConfigSpec.DoubleValue,
         ) {
             /**
              * DC-DC converter maximum output power in watts (above this it burns out)
@@ -280,6 +308,66 @@ object DigitalgridConfig {
              * Maximum input voltage; above this the DC-DC converter burns out
              */
             val maxInputVoltage by maxInputVoltageSpec.asVar(::Volt)
+
+            /**
+             * Default DC-DC converter output voltage setpoint
+             */
+            val outputVoltage by outputVoltageSpec.asVar(::Volt)
+
+            /**
+             * Minimum selectable DC-DC converter output voltage setpoint
+             */
+            val minOutputVoltage by minOutputVoltageSpec.asVar(::Volt)
+
+            /**
+             * Maximum selectable DC-DC converter output voltage setpoint
+             */
+            val maxOutputVoltage by maxOutputVoltageSpec.asVar(::Volt)
+        }
+
+        data class Mosfet(
+            private val thresholdVoltageSpec: ModConfigSpec.DoubleValue,
+            private val minThresholdVoltageSpec: ModConfigSpec.DoubleValue,
+            private val maxThresholdVoltageSpec: ModConfigSpec.DoubleValue,
+            private val transconductanceSpec: ModConfigSpec.DoubleValue,
+            private val channelLengthModulationSpec: ModConfigSpec.DoubleValue,
+            private val maxPowerSpec: ModConfigSpec.DoubleValue,
+            private val overheatTemperatureSpec: ModConfigSpec.DoubleValue,
+        ) {
+            /**
+             * Default MOSFET gate threshold voltage
+             */
+            val thresholdVoltage by thresholdVoltageSpec.asVar(::Volt)
+
+            /**
+             * Minimum selectable MOSFET gate threshold voltage
+             */
+            val minThresholdVoltage by minThresholdVoltageSpec.asVar(::Volt)
+
+            /**
+             * Maximum selectable MOSFET gate threshold voltage
+             */
+            val maxThresholdVoltage by maxThresholdVoltageSpec.asVar(::Volt)
+
+            /**
+             * MOSFET transconductance parameter k (A/V^2); higher means lower on-resistance
+             */
+            val transconductance by transconductanceSpec.asVar()
+
+            /**
+             * MOSFET channel-length modulation lambda (1/V); output conductance in saturation
+             */
+            val channelLengthModulation by channelLengthModulationSpec.asVar()
+
+            /**
+             * MOSFET maximum dissipation in watts before it burns out
+             */
+            val maxPower by maxPowerSpec.asVar(::Watt)
+
+            /**
+             * MOSFET overheat temperature in degrees Celsius
+             */
+            val overheatTemperature by overheatTemperatureSpec.asVar()
         }
     }
 }
