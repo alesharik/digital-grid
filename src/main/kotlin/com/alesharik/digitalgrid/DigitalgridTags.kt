@@ -40,6 +40,8 @@ object DigitalgridTags {
             tag(PLASTICS)
                 .add(DigitalgridRegistry.Items.PLASTIC)
                 .addOptionalTag(TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath("c", "ingots/plastic")))
+            tag(ASSEMBLABLE)
+                .add(DigitalgridRegistry.Items.DIN_RACK_PLC)
         }
 
         companion object {
@@ -48,6 +50,12 @@ object DigitalgridTags {
                 TagKey.create(
                     Registries.ITEM,
                     ResourceLocation.fromNamespaceAndPath(Digitalgrid.ID, "plastics")
+                )
+            @JvmStatic
+            val ASSEMBLABLE: TagKey<Item> =
+                TagKey.create(
+                    Registries.ITEM,
+                    ResourceLocation.fromNamespaceAndPath(Digitalgrid.ID, "assemblable")
                 )
         }
     }

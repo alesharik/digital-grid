@@ -1,7 +1,7 @@
 package com.alesharik.digitalgrid
 
-import com.alesharik.digitalgrid.recipe.BreadboardingAttachRecipe
-import com.alesharik.digitalgrid.recipe.BreadboardingCraftRecipe
+import com.alesharik.digitalgrid.recipe.AssemblyAttachRecipe
+import com.alesharik.digitalgrid.recipe.AssemblyCraftRecipe
 import com.alesharik.digitalgrid.recipe.CountedIngredient
 import com.alesharik.digitalgrid.utils.PressingRecipeGenKt
 import com.alesharik.digitalgrid.utils.SequencedAssemblyRecipeGenKt
@@ -150,14 +150,6 @@ object DigitalgridRecipies {
                         .unlockedBy("has_casing", has(DigitalgridRegistry.Items.DIN_RACK_CASING))
                 }
 
-                shaped(DigitalgridRegistry.Items.DIN_RACK_PATCH, 1) {
-                    pattern("X")
-                        .pattern("Y")
-                        .pattern("X")
-                        .define('X', AllItems.COPPER_NUGGET)
-                        .define('Y', DigitalgridRegistry.Items.DIN_RACK_CASING)
-                        .unlockedBy("has_casing", has(DigitalgridRegistry.Items.DIN_RACK_CASING))
-                }
 
                 shapeless(DigitalgridRegistry.Items.DIN_RACK_BATTERY, 1) {
                     requires(DigitalgridRegistry.Items.DIN_RACK_CASING)
@@ -165,7 +157,71 @@ object DigitalgridRecipies {
                         .requires(DigitalgridRegistry.Items.CONTROL_CIRCUIT)
                         .unlockedBy("has_battery", has(ModdedBlocks.BATTERY))
                 }
+
+                // --- Assembly recipes ---
+                // Attach recipes: PLC + ingredients -> PLC with component
+                r.accept(
+                    rl("assembly/plc_wireless_modem"),
+                    AssemblyAttachRecipe(
+                        rl("plc_wireless_modem"),
+                        listOf(
+                            Ingredient.of(DigitalgridRegistry.Items.WIRELESS_CIRCUIT),
+                            Ingredient.of(Items.IRON_INGOT),
+                        ),
+                    ),
+                    null,
+                )
+                r.accept(
+                    rl("assembly/plc_ender_modem"),
+                    AssemblyAttachRecipe(
+                        rl("plc_ender_modem"),
+                        listOf(
+                            Ingredient.of(DigitalgridRegistry.Items.WIRELESS_CIRCUIT),
+                            Ingredient.of(Items.ENDER_PEARL),
+                        ),
+                    ),
+                    null,
+                )
+                r.accept(
+                    rl("assembly/plc_watchdog"),
+                    AssemblyAttachRecipe(
+                        rl("plc_watchdog"),
+                        listOf(
+                            Ingredient.of(ModdedItems.IRON_WIRE.get()),
+                            Ingredient.of(Items.CLOCK),
+                        ),
+                    ),
+                    null,
+                )
+                r.accept(
+                    rl("assembly/plc_beeper"),
+                    AssemblyAttachRecipe(
+                        rl("plc_beeper"),
+                        listOf(
+                            Ingredient.of(ModdedItems.IRON_WIRE.get()),
+                            Ingredient.of(Items.NOTE_BLOCK),
+                        ),
+                    ),
+                    null,
+                )
+
+                // Craft recipe: replaces the old shaped din_rack_patch recipe
+                // 2 copper nuggets + 1 din_rack_casing -> 1 din_rack_patch
+                r.accept(
+                    rl("assembly/din_rack_patch"),
+                    AssemblyCraftRecipe(
+                        listOf(
+                            CountedIngredient(Ingredient.of(AllItems.COPPER_NUGGET.get()), 2),
+                            CountedIngredient(Ingredient.of(DigitalgridRegistry.Items.DIN_RACK_CASING), 1),
+                        ),
+                        ItemStack(DigitalgridRegistry.Items.DIN_RACK_PATCH, 1),
+                    ),
+                    null,
+                )
             }
         }
     }
+
+    private fun rl(path: String): ResourceLocation =
+        ResourceLocation.fromNamespaceAndPath(Digitalgrid.ID, path)
 }
